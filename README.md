@@ -3,14 +3,14 @@ fisk.py - jednostavna implementacija biblioteke za fiskalizaciju
 		  
 REQUIREMENTS
 
-1) pyXMLsec library - http://pyxmlsec.labs.libre-entreprise.org/
-2) pyCrypto library - https://www.dlitz.net/software/pycrypto/
+1. pyXMLsec library - http://pyxmlsec.labs.libre-entreprise.org/
+2. pyCrypto library - https://www.dlitz.net/software/pycrypto/
 
 USAGE
 
 1) Echo Request
 
-'''Python
+```Python
 import fisk
 import xml.etree.ElementTree as et
 
@@ -23,11 +23,11 @@ print et.tostring(echoSOAPMessage)
 
 #send request and print server reply
 print et.tostring(echo.send())
-'''
+```
 
 2) PoslovniProstor Request
 
-'''Python
+```Python
 import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
@@ -55,11 +55,11 @@ print et.tostring(ppz.getSOAPMessage())
 
 #send request message to server (DEMO) and print reply
 print et.tostring(ppz.send(signer))
-'''
+```
 
 3) Racun Request
 
-'''Python
+```Python
 import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
@@ -101,4 +101,4 @@ print et.tostring(racun.generate())
 #create Request and send it to server (DEMO) and print reply
 racunZahtjev = fisk.RacunZahtjev(racun)
 print et.tostring(racunZahtjev.send(signer))
-'''
+```
