@@ -1,7 +1,7 @@
 # coding=UTF-8
 """
-fisk.py - jednostavna implementacija biblioteke za
-          fiskalizaciju (Hrvatska) po wsdl-1.1.2
+fisk.py - simple library for Croatian (Hrvatska) 
+          fiscalization 
 
 Copyright 2013 Boris Tomić <boris@kodmasin.net>
 
@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.5.1 - just tested in DEMO environment
+VERSION = 0.5.1
 """
 
 from uuid import uuid4
@@ -860,7 +860,7 @@ class Racun(FiskXMLElement):
     def __init__(self, data, keyFileName):
         """
         data - dict - initial data
-        kayFileName - string - ful path of filename which holds private key neede for 
+        kayFileName - string - ful path of filename which holds private key needed for 
             creation of ZastKod
         """
         porezListVal = XMLValidatorListType(Porez)

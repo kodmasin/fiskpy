@@ -1,7 +1,7 @@
 # coding=UTF-8
 """
 setup.py for fisk.py - simple library for
-          fiscalization (Hrvatska) as defined in wsdl-1.1.2
+          fiscalization (Hrvatska)
 
 Copyright 2013 Boris Tomić <boris@kodmasin.net>
 
@@ -21,8 +21,8 @@ limitations under the License.
 from distutils.core import setup
 
 setup(name = 'fisk',
-      version = '0.1',
-      description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2",
+      version = '0.5.1',
+      description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
       author = 'Boris Tomic',
       author_email = 'boris@kodmasin.net',
       py_modules=['fisk'],
