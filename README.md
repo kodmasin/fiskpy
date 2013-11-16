@@ -1,14 +1,14 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
 		  (Hrvatska) 
 		  
-REQUIREMENTS
+## REQUIREMENTS
 
 1. pyXMLsec library - http://pyxmlsec.labs.libre-entreprise.org/
 2. pyCrypto library - https://www.dlitz.net/software/pycrypto/
 
-USAGE
+## USAGE
 
-1) Echo Request
+### Echo Request
 
 ```Python
 import fisk
@@ -25,7 +25,7 @@ print et.tostring(echoSOAPMessage)
 print et.tostring(echo.send())
 ```
 
-2) PoslovniProstor Request
+### PoslovniProstor Request
 
 ```Python
 import fisk
@@ -57,7 +57,7 @@ print et.tostring(ppz.getSOAPMessage())
 print et.tostring(ppz.send(signer))
 ```
 
-3) Racun Request
+## Racun Request
 
 ```Python
 import fisk
@@ -102,3 +102,39 @@ print et.tostring(racun.generate())
 racunZahtjev = fisk.RacunZahtjev(racun)
 print et.tostring(racunZahtjev.send(signer))
 ```
+
+## KEY GENERATION
+
+Fiscalization keys and certificates are delivered in .p12 or .pfx format. To be used with this library you should
+convert them to .pem format. This can be done with openssl.
+
+'''
+openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
+'''
+
+Now certificate.pem holds both key and certificate. So you should manually open this file and copy each to
+separate file including BEGIN/END statements.
+
+### CA Certificates
+You will also need CA certificate for DEMO and PRODUCTION environment. This certificate is needed for
+verification process.
+
+#### DEMO CA Certificate
+
+You can download this certificate https://demo-pki.fina.hr/crl/democacert.cer
+
+#### PRODUCTION CA Certificate
+
+You can found it in .p12 in which you have received your private key and certificate.
+
+## Changelog
+
+### Version 0.5.1
+
+  * Known bugs fixed
+  * required element check moved to generate method. So required element is check before sending request
+  not at constructor. 
+
+### Version 0.5
+
+First public release 

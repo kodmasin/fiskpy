@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.1 - just tested in DEMO environment
+VERSION = 0.5.1 - just tested in DEMO environment
 """
 
 from uuid import uuid4
@@ -166,9 +166,12 @@ class XMLElement(object):
         self.__dict__['order'] = []
         self.__dict__['attributes'] = dict()
         self.__dict__['namespace'] = "{" + namespace + "}"
+        self.__dict__['text'] = None
         self.__dict__['textValidators'] = []
+        self.__dict__['textRequired'] = []
         self.__dict__['name'] = name
         self.__dict__["validators"] = dict()
+        self.__dict__['required'] = dict()
         
         childNames = list()
         for element in childrenNames:
@@ -178,34 +181,32 @@ class XMLElement(object):
         
         for element in childrenNames:
             name, validators = element
-            if(name == "text"):
-                if(type(validators) == list):
-                    self.__dict__["textValidators"] = validators
-                else:
-                    raise TypeError("Validators has to be list of validators")
+            if(type(validators) == list):
+                for validator in validators:
+                    self.addValidator(name, validator)
             else:
-                if name in self.__dict__['order']:
-                    if(type(validators) == list):
-                        self.__dict__["validators"][name] = validators
-                    else:
-                        raise TypeError("Validators has to be list of validators")
+                raise TypeError("Validators has to be list of validators")
                 
         if text != "":
             self.text = text   
         if data != None:
-            for key in self.__dict__['order']:
-                if(key in data):
-                    value = data[key]
-                    self.__setattr__(key, value)
-                else:
-                    self.__setattr__(key, None) 
+            for name, value in data.items():
+                self.__setattr__(name, value) 
 
         
     def generate(self):
         """
         returns xml element (ElementTree) reprezentation of this class
+        
+        This method also checks are all required valuesa (attributes) set
+        If not it will raise ValueError exception
         """
-       
+        #check if all required items are here
+        for name, validators in self.__dict__['required'].items():
+            for validator in validators:
+                if(not validator.validate(self.__dict__['items'][name])):
+                    raise ValueError("Attribute " + name + " of class " + self.__class__.__name__ + " is required!")
+        #generate xml as ElementTree
         xml = Element(self.__dict__["namespace"] + self.getName(), self.__dict__['attributes'])
         if self.__dict__['items']:
             for key in self.__dict__['order']:
@@ -261,11 +262,13 @@ class XMLElement(object):
         self.__dict__['items'] = dict()
         self.__dict__['order'] = []
         self.__dict__['validators'] = dict()
+        self.__dict__['required'] = dict()
         for name in names:
             if name != "text":
                 self.__dict__['items'][name] = None
                 self.__dict__['order'].append(name)
                 self.__dict__['validators'][name] = []
+                self.__dict__['required'][name] = []
             
     def setAttr(self, attrs):
         """
@@ -303,20 +306,28 @@ class XMLElement(object):
         """
         if(name == "text"):
             if(isinstance(validator, XMLValidator)):
-                self.__dict__["textValidators"].append(validator)
-                if(not self._validateValue(name, self.__dict__["items"][name])):
-                    raise ValueError("Value " + self.__dict__["items"][name] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                if(isinstance(validator, XMLValidatorRequired)):
+                    self.__dict__['textRequired'].append(validator)
+                else:
+                    self.__dict__["textValidators"].append(validator)
+                    if(not self._validateValue(name, self.__dict__["text"])):
+                        raise ValueError("Value " + self.__dict__["text"] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
         else:
             if(name not in self.__dict__["order"]):
                 raise NameError("This object does not have attribute with given value")
             if(isinstance(validator, XMLValidator)):
-                if(self.__dict__["validators"][name]):
-                    self.__dict__["validators"][name].append(validator)
+                #we separate required and value checkers because they are used in different places
+                if(isinstance(validator, XMLValidatorRequired)):
+                    if(not self.__dict__["required"][name]):
+                        self.__dict__["required"][name] = []
+                    self.__dict__["required"][name].append(validator)
                 else:
-                    self.__dict__["validators"][name] = []
+                    if(not self.__dict__["validators"][name]):
+                        self.__dict__["validators"][name] = []
                     self.__dict__["validators"][name].append(validator)
-                if(not self._validateValue(name, self.__dict__["items"][name])):
-                    raise ValueError("Value " + self.__dict__["items"][name] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+        
+                    if(not self._validateValue(name, self.__dict__["items"][name])):
+                        raise ValueError("Value " + self.__dict__["items"][name] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
             else:
                 raise TypeError("validator has to be instance or subclass of XMLValidator")
         
