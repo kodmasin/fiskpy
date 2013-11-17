@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.5.1
+VERSION = 0.5.2
 """
 
 from uuid import uuid4
@@ -150,7 +150,7 @@ class XMLElement(object):
     
     it uses ElementTree for xml generation
     """
-    def __init__(self, childrenNames = None, namespace = "", text = "", data = None, name = None):
+    def __init__(self, childrenNames = None, namespace = "", text = None, data = None, name = None):
         """
         creates XMLElement object
         
@@ -186,9 +186,11 @@ class XMLElement(object):
                     self.addValidator(name, validator)
             else:
                 raise TypeError("Validators has to be list of validators")
+            
+        self.addValidator('text', XMLValidatorType(str))
                 
-        if text != "":
-            self.text = text   
+        if text != None:
+            self.__setattr__("text", text)   
         if data != None:
             for name, value in data.items():
                 self.__setattr__(name, value) 
@@ -201,15 +203,16 @@ class XMLElement(object):
         This method also checks are all required valuesa (attributes) set
         If not it will raise ValueError exception
         """
-        #check if all required items are here
-        for name, validators in self.__dict__['required'].items():
-            for validator in validators:
-                if(not validator.validate(self.__dict__['items'][name])):
-                    raise ValueError("Attribute " + name + " of class " + self.__class__.__name__ + " is required!")
         #generate xml as ElementTree
         xml = Element(self.__dict__["namespace"] + self.getName(), self.__dict__['attributes'])
         if self.__dict__['items']:
             for key in self.__dict__['order']:
+                #check if it is required
+                if key in self.__dict__['required']:
+                    validators = self.__dict__['required'][key]
+                    for validator in validators:
+                        if(not validator.validate(self.__dict__['items'][key])):
+                            raise ValueError("Attribute " + key + " of class " + self.__class__.__name__ + " is required!")
                 value = self.__dict__['items'][key] 
                 if value != None:
                     if(type(value) is str):
@@ -225,13 +228,18 @@ class XMLElement(object):
                     else:
                         raise TypeError
         else:
+            #check if it text is required
+            validators = self.__dict__['textRequired']
+            for validator in validators:
+                if(not validator.validate(self.__dict__['text'])):
+                    raise ValueError("Text attribute of class " + self.__class__.__name__ + " is required!")
             xml.text = self.__dict__["text"]
         return xml
     
     
     def __getattr__(self, name):
         if name not in self.items:
-            raise NameError
+            raise NameError("Class " + self.__class__.__name__ + " does not have attribute with name " + name)
         return self.items[name]
     
     def __setattr__(self, name, value):
@@ -248,7 +256,7 @@ class XMLElement(object):
                 raise TypeError("text attribute must be string")
         else:
             if name not in self.__dict__['order']:
-                raise NameError("This class does not have attribute with given name")
+                raise NameError("Class " + self.__class__.__name__ + " does not have attribute with name " + name)
             if(self._validateValue(name, value)):  
                 self.items[name] = value
             else:
@@ -336,10 +344,9 @@ class XMLElement(object):
         Private method to validate class attribute with avaliable validators 
         """
         if(name == "text"):
-            if(type(value) == str):
-                for validator in self.__dict__["textValidators"]:
-                    if(not validator.validate(value)):
-                        return False
+            for validator in self.__dict__["textValidators"]:
+                if(not validator.validate(value)):
+                    return False
         else:
             if(name not in self.__dict__["order"]):
                 raise NameError("This object (of class " + self.__class__.__name__ + ") does not have attribute with given value")
@@ -618,7 +625,7 @@ class FiskXMLElement(XMLElement):
     """
     base element for creating fiskla xml messages
     """
-    def __init__(self, childrenNames = None, text = "", data = None, name = None):
+    def __init__(self, childrenNames = None, text = None, data = None, name = None):
         XMLElement.__init__(self, childrenNames, "http://www.apis-it.hr/fin/2012/types/f73", text, data, name)
 
         
@@ -630,7 +637,7 @@ class FiskXMLRequest(FiskXMLElement):
     
     it knows how to send request to srever using send
     """
-    def __init__(self, childrenNames = None, text = "", data = None, name = None):
+    def __init__(self, childrenNames = None, text = None, data = None, name = None):
         FiskXMLElement.__init__(self, childrenNames, text, data)
         
     def getSOAPMessage(self):
@@ -688,7 +695,7 @@ class EchoRequest(FiskXMLRequest):
     """
     EchoRequest fiskal element. This element is capable to send Echo SOAP message to server 
     """
-    def __init__(self, text=""):
+    def __init__(self, text=None):
         """
         creates Echo Request with message defined in text. Althought there is no string limit defined
         in specification I have put that text should be between 1-1000 chars
