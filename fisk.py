@@ -17,14 +17,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.5.2
+VERSION = 0.6
 """
 
 from uuid import uuid4
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring,\
      fromstring
-from httplib import HTTPSConnection
+from httplib import HTTPSConnection, HTTPException
 import libxml2
 import xmlsec
 import re
@@ -362,11 +362,8 @@ class FiskXMLEleSignerError(Exception):
     exception used in FiskXMLsec class as indicator 
     of some error
     """
-    def __init__(self, value):
-        self.value = value
-    
-    def __str__(self):
-        return repr(self.value)
+    def __init__(self, message):
+        Exception.__init__(self, message)
     
 
 class FiskXMLsec(object):
@@ -581,6 +578,13 @@ class FiskSOAPMessage():
         """
         return self.message
     
+class FiskSOAPClientError(Exception):
+    """
+    exception used in FiskXMLsec class as indicator 
+    of some error
+    """
+    def __init__(self, message):
+        Exception.__init__(self, message)
 
 class FiskSOAPClient(object):
     """
@@ -605,20 +609,23 @@ class FiskSOAPClient(object):
         if raw is True then returns raw xml
         """
         xml = message
-        conn = HTTPSConnection(self.host, self.port)
+        conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
         conn.request("POST", self.url, body=xml, headers = {
             "Host": "testing",
             "Content-Type": "text/xml; charset=UTF-8",
-            "Content-Length": len(xml),
+            #"Content-Length": len(xml),
             "SOAPAction": "FiskalizacijaServiceTest"
         })
+        rawresponse = conn.getresponse()
         
-        response = conn.getresponse().read()
+        if(rawresponse.status != 200):
+            conn.close()
+            raise FiskSOAPClientError(str(rawresponse.status) + ": " + rawresponse.reason)
+        response = rawresponse.read()
+        conn.close()
         if(not raw):
             response = fromstring(response)
         return response
-
-    
         
         
 class FiskXMLElement(XMLElement):
@@ -639,6 +646,9 @@ class FiskXMLRequest(FiskXMLElement):
     """
     def __init__(self, childrenNames = None, text = None, data = None, name = None):
         FiskXMLElement.__init__(self, childrenNames, text, data)
+        self.__dict__['lastRequest'] = None
+        self.__dict__['lastResponse'] = None
+        self.__dict__['lastError'] = list()
         
     def getSOAPMessage(self):
         """
@@ -662,7 +672,7 @@ class FiskXMLRequest(FiskXMLElement):
         cl = SOAPclient
         if SOAPclient == None:
             cl = FiskSOAPClient()
-        xml = self.getSOAPMessage()
+        self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
         IdPoruke = None
         try:
@@ -670,10 +680,10 @@ class FiskXMLRequest(FiskXMLElement):
         except NameError:
             pass
         
-        message = tostring(xml)
+        message = tostring(self.__dict__['lastRequest'])
         
         if(signer != None and isinstance(signer, FiskXMLsec)):
-            message = signer.signTemplate(xml, self.getElementName())
+            message = signer.signTemplate(self.__dict__['lastRequest'], self.getElementName())
            
         reply = cl.send(message, True)
         if(signer != None and isinstance(signer, FiskXMLsec)):
@@ -689,7 +699,40 @@ class FiskXMLRequest(FiskXMLElement):
                     break
             if(IdPoruke != retIdPoruke):
                 reply = None
+        self.__dict__['lastResponse'] = reply
         return reply
+    
+    def get_last_request(self):
+        """
+        Returns last SOAP message sent to server as ElementTree object
+        """
+        return self.__dict__['lastRequest']
+    
+    def get_last_response(self):
+        """
+        Returns last SOAP message received from server as ElementTree object
+        """
+        return self.__dict__['lastResponse']
+    
+    def get_last_error(self):
+        """
+        Returns list of last errors. This method should be used if execute method returns False
+        """
+        return self.__dict__['lastError']
+    
+    def execute(self, signer = None, SOAPclient = None):
+        """
+        This method returns reply from server or False
+        
+        If false you can check what was error with get_last_error method
+        
+        In this class this method does nothing as this is base class for other requests
+        """
+        self.__dict__['lastError'] = list()
+        self.__dict__['lastError'].append("Class " + self.__class__.__name__ + "did not implement execute method")
+        return False
+    
+
       
 class EchoRequest(FiskXMLRequest):
     """
@@ -701,6 +744,31 @@ class EchoRequest(FiskXMLRequest):
         in specification I have put that text should be between 1-1000 chars
         """
         FiskXMLRequest.__init__(self, text=text, childrenNames = ( ("text", [XMLValidatorLen(1,1000), XMLValidatorRequired()]), ) )
+        
+    def execute(self, soapclient = None):
+        """
+        Sends echo request to server and returns echo reply.
+        
+        If error occures returns False. In that case you can check error with get_last_error 
+        """
+        self.__dict__['lastError'] = list()
+        reply = False
+        try:
+            self.send(None, soapclient)
+        except Exception as e:
+            self.__dict__['lastError'].append(str(e))
+        except:
+            self.__dict__['lastError'].append("Unknown error")
+        
+        if(isinstance(self.__dict__['lastResponse'], Element)):
+            for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "EchoResponse"):
+                reply = element.text
+                
+            if(reply == False):
+                for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
+                    self.__dict__['lastError'].append(element.text)
+        
+        return reply
         
 
 class Zaglavlje(FiskXMLElement):
@@ -792,6 +860,29 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         self.Zaglavlje = Zaglavlje()
         self.setAttr({"Id": "ppz"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
+        
+    def execute(self, signer, SOAPclient = None):
+        """
+        Sends PoslovniProstorZahtjev request to server and returns True if success.
+        
+        If error occures returns False. In that case you can check error with get_last_error 
+        """
+        self.__dict__['lastError'] = list()
+        reply = False
+        try:
+            self.send(signer, SOAPclient)
+        except Exception as e:
+            self.__dict__['lastError'].append(str(e))
+        except:
+            self.__dict__['lastError'].append("Unknown error.")
+        
+        reply = True
+        if(isinstance(self.__dict__['lastResponse'], Element)):
+            for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
+                self.__dict__['lastError'].append(element.text)
+                reply = False 
+        
+        return reply
         
 class BrRac(FiskXMLElement):
     """
@@ -936,4 +1027,27 @@ class RacunZahtjev(FiskXMLRequest):
         self.setAttr({"Id": "rac"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
         
-    
+    def execute(self, signer, SOAPClient = None):
+        """
+        Send RacunREquest to server. If seccessful returns JIR else False
+        
+        If returns False you can get errors with get_last_error method
+        """
+        self.__dict__['lastError'] = list()
+        reply = False
+        try:
+            self.send(signer, SOAPClient)
+        except Exception as e:
+            self.__dict__['lastError'].append(str(e))
+        except:
+            self.__dict__['lastError'].append("Unknown error.")
+        
+        if(isinstance(self.__dict__['lastResponse'], Element)):
+            for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "Jir"):
+                reply = element.text
+            
+            if(reply == False):
+                for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
+                    self.__dict__['lastError'].append(element.text)
+                
+        return reply
