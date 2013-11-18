@@ -149,6 +149,7 @@ You can found it in .p12 in which you have received your private key and certifi
   * USAGE section in README now have examples using execute method instead send method. Send method still works
   as it is used internally
   * little better handling of connection errors of FiskSOAPClient
+  * Fisk*Error classes used for exceptions - implementation changed
 
 ### Version 0.5.1
 
