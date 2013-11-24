@@ -648,6 +648,8 @@ class FiskXMLRequest(FiskXMLElement):
         FiskXMLElement.__init__(self, childrenNames, text, data)
         self.__dict__['lastRequest'] = None
         self.__dict__['lastResponse'] = None
+        self.__dict__['idPoruke'] = None
+        self.__dict__['dateTime'] = None
         self.__dict__['lastError'] = list()
         
     def getSOAPMessage(self):
@@ -674,9 +676,11 @@ class FiskXMLRequest(FiskXMLElement):
             cl = FiskSOAPClient()
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
-        IdPoruke = None
+        self.__dict__['idPoruke'] = None
+        self.__dict__['dateTime'] = None
         try:
-            IdPoruke = self.Zaglavlje.IdPoruke
+            self.__dict__['idPoruke'] = self.Zaglavlje.IdPoruke
+            self.__dict__['dateTime'] = datetime.strptime(self.Zaglavlje.DatumVrijeme, '%d.%m.%YT%H:%M:%S')
         except NameError:
             pass
         
@@ -691,13 +695,13 @@ class FiskXMLRequest(FiskXMLElement):
                 reply = None
         if reply != None:
             reply = fromstring(reply)
-        if(IdPoruke != None):
+        if(self.__dict__['idPoruke'] != None):
             retIdPoruke = None
             for element in reply.iter():
                 if(element.tag.find("IdPoruke") != -1):
                     retIdPoruke = element.text
                     break
-            if(IdPoruke != retIdPoruke):
+            if(self.__dict__['idPoruke'] != retIdPoruke):
                 reply = None
         self.__dict__['lastResponse'] = reply
         return reply
@@ -731,6 +735,18 @@ class FiskXMLRequest(FiskXMLElement):
         self.__dict__['lastError'] = list()
         self.__dict__['lastError'].append("Class " + self.__class__.__name__ + "did not implement execute method")
         return False
+    
+    def get_id_msg(self):
+        """
+        returns last message id if available (Echo request does not have it)
+        """
+        return self.__dict__['idPoruke']
+    
+    def get_datetime_msg(self):
+        """
+        returns last message datetime if available (Echo request does not have it)
+        """
+        return self.__dict__['dateTime']
     
 
       

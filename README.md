@@ -140,6 +140,9 @@ You can found it in .p12 in which you have received your private key and certifi
 
 ## Changelog
 
+### Version 0.6.1
+  * implemented get_id_mag and get_datetime_msg methods of FiskXMLRequest class
+
 ### Version 0.6
   * Known bugs fixed
   * added execute method to FiskXMLRequest for easier request handling (no more need to parse raw XML returned
