@@ -653,7 +653,7 @@ class FiskXMLRequest(FiskXMLElement):
         self.__dict__['lastResponse'] = None
         self.__dict__['idPoruke'] = None
         self.__dict__['dateTime'] = None
-        self.__dict__['lastError'] = list()
+        self.__dict__['lastError'] = None
         
     def getSOAPMessage(self):
         """
@@ -723,7 +723,7 @@ class FiskXMLRequest(FiskXMLElement):
     
     def get_last_error(self):
         """
-        Returns list of last errors. This method should be used if execute method returns False
+        Returns last error which was recieved from PU serever
         """
         return self.__dict__['lastError']
     
@@ -768,16 +768,12 @@ class EchoRequest(FiskXMLRequest):
         """
         Sends echo request to server and returns echo reply.
         
-        If error occures returns False. In that case you can check error with get_last_error 
+        If error occures returns False. You can get last error with get_last_error method 
         """
         self.__dict__['lastError'] = list()
         reply = False
-        try:
-            self.send(None, soapclient)
-        except Exception as e:
-            self.__dict__['lastError'].append(str(e))
-        except:
-            self.__dict__['lastError'].append("Unknown error")
+        
+        self.send(None, soapclient)
         
         if(isinstance(self.__dict__['lastResponse'], Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "EchoResponse"):
@@ -888,18 +884,14 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         """
         self.__dict__['lastError'] = list()
         reply = False
-        try:
-            self.send(signer, SOAPclient)
-        except Exception as e:
-            self.__dict__['lastError'].append(str(e))
-        except:
-            self.__dict__['lastError'].append("Unknown error.")
+        
+        self.send(signer, SOAPclient)
         
         if(isinstance(self.__dict__['lastResponse'], Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
                 self.__dict__['lastError'].append(element.text)
-        else:
-            reply = True 
+            if(len(self.__dict__['lastError']) == 0):
+                reply = True
         
         return reply
         
@@ -1054,12 +1046,8 @@ class RacunZahtjev(FiskXMLRequest):
         """
         self.__dict__['lastError'] = list()
         reply = False
-        try:
-            self.send(signer, SOAPClient)
-        except Exception as e:
-            self.__dict__['lastError'].append(str(e))
-        except:
-            self.__dict__['lastError'].append("Unknown error.")
+        
+        self.send(signer, SOAPClient)
         
         if(isinstance(self.__dict__['lastResponse'], Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "Jir"):
