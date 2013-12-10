@@ -228,7 +228,7 @@ class XMLElement(object):
                     elif(issubclass(type(value), XMLElement) and key == value.getName()):
                         xml.append(value.generate())
                     else:
-                        raise TypeError("Generate method in class " + self.__class__.__name__ + " can not generate suplied type")
+                        raise TypeError("Generate method in class " + self.__class__.__name__ + " can not generate supplied type")
         else:
             #check if it text is required
             validators = self.__dict__['textRequired']
@@ -248,12 +248,12 @@ class XMLElement(object):
         if name == "items":
             return
         if(name == "text"):
-            if(type(value) == str):
+            if(type(value) == str or type(value) == unicode):
                 if(self._validateValue(name, value)):
                     self.__dict__['items'] = dict()
                     self.__dict__['text'] = value
                 else:
-                    ValueError("Value " + value + " is not valid as text of " + self.__class__.__name__ + " element")
+                    ValueError("Value " + value + " (" + type(value).__name__ + ") is not valid as text of " + self.__class__.__name__ + " element")
             else:
                 raise TypeError("text attribute must be string")
         else:
@@ -262,7 +262,7 @@ class XMLElement(object):
             if(self._validateValue(name, value)):  
                 self.items[name] = value
             else:
-                raise ValueError("Value " + str(value) + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                raise ValueError("Value " + str(value) + " (" + type(value).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
         
     def setAvailableChildren(self, names):
         """
@@ -321,7 +321,7 @@ class XMLElement(object):
                 else:
                     self.__dict__["textValidators"].append(validator)
                     if(not self._validateValue(name, self.__dict__["text"])):
-                        raise ValueError("Value " + self.__dict__["text"] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                        raise ValueError("Value " + self.__dict__["text"] + " (" + type(self.__dict__["text"]).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
         else:
             if(name not in self.__dict__["order"]):
                 raise NameError("This object does not have attribute with given value")
@@ -337,9 +337,9 @@ class XMLElement(object):
                     self.__dict__["validators"][name].append(validator)
         
                     if(not self._validateValue(name, self.__dict__["items"][name])):
-                        raise ValueError("Value " + self.__dict__["items"][name] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                        raise ValueError("Value " + self.__dict__["items"][name] + " (" + type(self.__dict__["items"][name]).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
             else:
-                raise TypeError("validator has to be instance or subclass of XMLValidator")
+                raise TypeError("Validator for " + name + " attribute of " + self.__class__.__name__ + "class has to be instance or subclass of XMLValidator")
         
     def _validateValue(self, name, value):
         """
