@@ -142,6 +142,8 @@ You can found it in .p12 in which you have received your private key and certifi
 
 ### Version 0.6.1
   * implemented get_id_mag and get_datetime_msg methods of FiskXMLRequest class
+  * PoslovniProstorZahtjev execute method false true bug fixed
+  * unicode support for 2.x python fixed (I hope)
 
 ### Version 0.6
   * Known bugs fixed

@@ -50,7 +50,7 @@ class XMLValidatorLen(XMLValidator):
     def validate(self, value):
         if(value == None):
             return True
-        if (type(value) == str):
+        if (type(value) == unicode or type(value) == str):
             lenght = len(value)
             if(lenght >=self.min and lenght <=self.max):
                 return True
@@ -64,11 +64,14 @@ class XMLValidatorRegEx(XMLValidator):
         """
         regex is regular expression
         """
-        self.regex = re.compile(regex)
+        if(type(regex) == unicode):
+            self.regex = re.compile(regex, re.UNICODE)
+        else:
+            self.regex = re.compile(regex, re.UNICODE)
     def validate(self, value):
         if(value == None):
             return True
-        if (type(value) == str):
+        if (type(value) == unicode or type(value) == str):
             if(self.regex.match(value) != None):
                 return True
         return False
@@ -215,7 +218,7 @@ class XMLElement(object):
                             raise ValueError("Attribute " + key + " of class " + self.__class__.__name__ + " is required!")
                 value = self.__dict__['items'][key] 
                 if value != None:
-                    if(type(value) is str):
+                    if(type(value) is str or type(value) is unicode):
                         svar = SubElement(xml, self.__dict__["namespace"] + key)
                         svar.text = value
                     elif(type(value) is list):
@@ -226,7 +229,7 @@ class XMLElement(object):
                     elif(issubclass(type(value), XMLElement) and key == value.getName()):
                         xml.append(value.generate())
                     else:
-                        raise TypeError
+                        raise TypeError("Generate method in class " + self.__class__.__name__ + " can not generate suplied type")
         else:
             #check if it text is required
             validators = self.__dict__['textRequired']
@@ -892,11 +895,11 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         except:
             self.__dict__['lastError'].append("Unknown error.")
         
-        reply = True
         if(isinstance(self.__dict__['lastResponse'], Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
                 self.__dict__['lastError'].append(element.text)
-                reply = False 
+        else:
+            reply = True 
         
         return reply
         
