@@ -592,7 +592,7 @@ class FiskSOAPClient(object):
     """
     very very simple SOAP Client implementation
     """
-    def __init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest"):
+    def __init__(self, host, port, url):
         """
         construct client with service arguments (host, port, url)
         
@@ -616,7 +616,7 @@ class FiskSOAPClient(object):
             "Host": self.host,
             "Content-Type": "text/xml; charset=UTF-8",
             #"Content-Length": len(xml),
-            "SOAPAction": "FiskalizacijaService"
+            "SOAPAction": self.url
         })
         rawresponse = conn.getresponse()
         
@@ -628,10 +628,17 @@ class FiskSOAPClient(object):
         if(not raw):
             response = fromstring(response)
         return response
-    
-class FiskSOAPClientProduction(object):
+
+class FiskSOAPClientDemo(FiskSOAPClient):
     """
-    same class as FiskSOAPClient but with procudtion PU server parameters se by default 
+    same class as FiskSOAPClient but with demo PU server parameters set by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest")
+  
+class FiskSOAPClientProduction(FiskSOAPClient):
+    """
+    same class as FiskSOAPClient but with procudtion PU server parameters set by default 
     """
     def __init__(self):
         FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
@@ -682,7 +689,7 @@ class FiskXMLRequest(FiskXMLElement):
         """
         cl = SOAPclient
         if SOAPclient == None:
-            cl = FiskSOAPClient()
+            cl = FiskSOAPClientDemo()
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
         self.__dict__['idPoruke'] = None
