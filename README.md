@@ -140,6 +140,9 @@ You can found it in .p12 in which you have received your private key and certifi
 
 ## Changelog
 
+### Version 0.6.2
+  * added FiskSOAPClientProduction helper class
+
 ### Version 0.6.1
   * added type information in Validation errors / exceptions
   * Exception handling removed from execute method - you have to except them by your self

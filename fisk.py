@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.6.1
+VERSION = 0.6.2
 """
 
 from uuid import uuid4
@@ -613,10 +613,10 @@ class FiskSOAPClient(object):
         xml = message
         conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
         conn.request("POST", self.url, body=xml, headers = {
-            "Host": "testing",
+            "Host": self.host,
             "Content-Type": "text/xml; charset=UTF-8",
             #"Content-Length": len(xml),
-            "SOAPAction": "FiskalizacijaServiceTest"
+            "SOAPAction": "FiskalizacijaService"
         })
         rawresponse = conn.getresponse()
         
@@ -628,6 +628,13 @@ class FiskSOAPClient(object):
         if(not raw):
             response = fromstring(response)
         return response
+    
+class FiskSOAPClientProduction(object):
+    """
+    same class as FiskSOAPClient but with procudtion PU server parameters se by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
         
         
 class FiskXMLElement(XMLElement):
