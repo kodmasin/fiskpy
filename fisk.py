@@ -32,7 +32,6 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
 
-
 class XMLValidator:
     """
     base validator class
@@ -229,7 +228,7 @@ class XMLElement(object):
                     elif(issubclass(type(value), XMLElement) and key == value.getName()):
                         xml.append(value.generate())
                     else:
-                        raise TypeError("Generate method in class " + self.__class__.__name__ + " can not generate suplied type")
+                        raise TypeError("Generate method in class " + self.__class__.__name__ + " can not generate supplied type")
         else:
             #check if it text is required
             validators = self.__dict__['textRequired']
@@ -249,12 +248,12 @@ class XMLElement(object):
         if name == "items":
             return
         if(name == "text"):
-            if(type(value) == str):
+            if(type(value) == str or type(value) == unicode):
                 if(self._validateValue(name, value)):
                     self.__dict__['items'] = dict()
                     self.__dict__['text'] = value
                 else:
-                    ValueError("Value " + value + " is not valid as text of " + self.__class__.__name__ + " element")
+                    ValueError("Value " + value + " (" + type(value).__name__ + ") is not valid as text of " + self.__class__.__name__ + " element")
             else:
                 raise TypeError("text attribute must be string")
         else:
@@ -263,7 +262,7 @@ class XMLElement(object):
             if(self._validateValue(name, value)):  
                 self.items[name] = value
             else:
-                raise ValueError("Value " + str(value) + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                raise ValueError("Value " + str(value) + " (" + type(value).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
         
     def setAvailableChildren(self, names):
         """
@@ -322,7 +321,7 @@ class XMLElement(object):
                 else:
                     self.__dict__["textValidators"].append(validator)
                     if(not self._validateValue(name, self.__dict__["text"])):
-                        raise ValueError("Value " + self.__dict__["text"] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                        raise ValueError("Value " + self.__dict__["text"] + " (" + type(self.__dict__["text"]).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
         else:
             if(name not in self.__dict__["order"]):
                 raise NameError("This object does not have attribute with given value")
@@ -338,9 +337,9 @@ class XMLElement(object):
                     self.__dict__["validators"][name].append(validator)
         
                     if(not self._validateValue(name, self.__dict__["items"][name])):
-                        raise ValueError("Value " + self.__dict__["items"][name] + " is not valid for " + name + " attribute of class " + self.__class__.__name__)
+                        raise ValueError("Value " + self.__dict__["items"][name] + " (" + type(self.__dict__["items"][name]).__name__ + ") is not valid for " + name + " attribute of class " + self.__class__.__name__)
             else:
-                raise TypeError("validator has to be instance or subclass of XMLValidator")
+                raise TypeError("Validator for " + name + " attribute of " + self.__class__.__name__ + "class has to be instance or subclass of XMLValidator")
         
     def _validateValue(self, name, value):
         """
@@ -593,7 +592,7 @@ class FiskSOAPClient(object):
     """
     very very simple SOAP Client implementation
     """
-    def __init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest"):
+    def __init__(self, host, port, url):
         """
         construct client with service arguments (host, port, url)
         
@@ -614,10 +613,10 @@ class FiskSOAPClient(object):
         xml = message
         conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
         conn.request("POST", self.url, body=xml, headers = {
-            "Host": "testing",
+            "Host": self.host,
             "Content-Type": "text/xml; charset=UTF-8",
             #"Content-Length": len(xml),
-            "SOAPAction": "FiskalizacijaServiceTest"
+            "SOAPAction": self.url
         })
         rawresponse = conn.getresponse()
         
@@ -629,6 +628,20 @@ class FiskSOAPClient(object):
         if(not raw):
             response = fromstring(response)
         return response
+
+class FiskSOAPClientDemo(FiskSOAPClient):
+    """
+    same class as FiskSOAPClient but with demo PU server parameters set by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest")
+  
+class FiskSOAPClientProduction(FiskSOAPClient):
+    """
+    same class as FiskSOAPClient but with procudtion PU server parameters set by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
         
         
 class FiskXMLElement(XMLElement):
@@ -676,7 +689,7 @@ class FiskXMLRequest(FiskXMLElement):
         """
         cl = SOAPclient
         if SOAPclient == None:
-            cl = FiskSOAPClient()
+            cl = FiskSOAPClientDemo()
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
         self.__dict__['idPoruke'] = None
