@@ -189,7 +189,7 @@ class XMLElement(object):
             else:
                 raise TypeError("Validators has to be list of validators")
             
-        self.addValidator('text', XMLValidatorType(str))
+        #self.addValidator('text', XMLValidatorType(str))
                 
         if text != None:
             self.__setattr__("text", text)   
