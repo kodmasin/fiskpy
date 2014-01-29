@@ -954,7 +954,7 @@ class Naknada(FiskXMLElement):
                                 data = data)
 
 
-def zastitni_kod(oib, datumVrijeme, brRacuna, ozPoslovnogP, ozUredaja, ukupnoIznos, keyFilename):
+def zastitni_kod(oib, datumVrijeme, brRacuna, ozPoslovnogP, ozUredaja, ukupnoIznos, key_filename, key_password):
     """
     method which generates Zastitni kod
     
@@ -963,7 +963,7 @@ def zastitni_kod(oib, datumVrijeme, brRacuna, ozPoslovnogP, ozUredaja, ukupnoIzn
     """
     forsigning = oib + datumVrijeme + brRacuna + ozPoslovnogP + ozUredaja + ukupnoIznos
 
-    key = RSA.importKey(open(keyFilename).read())
+    key = RSA.importKey(open(key_filename).read(), key_password)
     h = SHA.new(forsigning)
     signer = PKCS1_v1_5.new(key)
     signature = signer.sign(h)
@@ -979,11 +979,12 @@ class Racun(FiskXMLElement):
     it is not possible to set ZastKod as this class calculate it each time
         you change one of varibales from it is calcualted
     """
-    def __init__(self, data, keyFileName):
+    def __init__(self, data, key_file, key_password):
         """
         data - dict - initial data
-        kayFileName - string - ful path of filename which holds private key needed for 
+        key_file - string - ful path of filename which holds private key needed for 
             creation of ZastKod
+        key_password - key password
         """
         porezListVal = XMLValidatorListType(Porez)
         iznosVal = XMLValidatorRegEx("^([+-]?)[0-9]{1,15}\.[0-9]{2}$")
@@ -1009,14 +1010,16 @@ class Racun(FiskXMLElement):
                                        ("ParagonBrRac", [XMLValidatorLen(1,100)]),
                                        ("SpecNamj", [XMLValidatorLen(1,1000)]) ),
                                 data = data)
-        self.__dict__["key"] = keyFileName
+        self.__dict__["key"] = key_file
+        self.__dict__["key_pass"] = key_password
         self.__dict__["items"]["ZastKod"] = zastitni_kod(self.Oib,
                                     self.DatVrijeme,
                                     self.BrRac.BrOznRac,
                                     self.BrRac.OznPosPr,
                                     self.BrRac.OznNapUr,
                                     self.IznosUkupno,
-                                    self.__dict__["key"])
+                                    self.__dict__["key"],
+                                    self.__dict__["key_pass"])
         
     def __setattr__(self, name, value):
         """
@@ -1036,7 +1039,8 @@ class Racun(FiskXMLElement):
                                             self.BrRac.OznPosPr,
                                             self.BrRac.OznNapUr,
                                             self.IznosUkupno,
-                                            self.__dict__["key"])
+                                            self.__dict__["key"],
+                                            self.__dict__["key_pass"])
 
 class RacunZahtjev(FiskXMLRequest):
     """

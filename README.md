@@ -142,6 +142,7 @@ You can found it in .p12 in which you have received your private key and certifi
 
 ### Version 0.6.2
   * added FiskSOAPClientProduction helper class
+  * EchoRequest unicode bug fixed
 
 ### Version 0.6.1
   * added type information in Validation errors / exceptions
