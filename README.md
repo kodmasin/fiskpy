@@ -90,7 +90,8 @@ racun = fisk.Racun(data = {"Oib": "12345678901",
               "NakDost": "false",
               "ParagonBrRac": "123-234-12",
               "SpecNamj": "Tekst specijalne namjne"},
-              keyFileName = '/path/to/your/key.pem')
+              key_file = '/path/to/your/key.pem',
+              key_password = 'kaypassword')
 
 #IWe did not supplied required element in constructor so now we set it
 racun.OznSlijed = "P"
@@ -126,6 +127,12 @@ openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
 Now certificate.pem holds both key and certificate. So you should manually open this file and copy each to
 separate file including BEGIN/END statements.
 
+If you want to have private key encrypted you should run (it is recommended):
+```
+openssl rsa -in key.pem -des3 -out passkey.pem
+```
+
+
 ### CA Certificates
 You will also need CA certificate for DEMO and PRODUCTION environment. This certificate is needed for
 verification process.
@@ -139,6 +146,9 @@ You can download this certificate https://demo-pki.fina.hr/crl/democacert.cer
 You can found it in .p12 in which you have received your private key and certificate.
 
 ## Changelog
+### Version 0.6.3
+  * fixed bug with encrypted keys
+  * fixed small bug with text part of Element class related to unicode
 
 ### Version 0.6.2
   * added FiskSOAPClientProduction helper class
