@@ -132,7 +132,6 @@ If you want to have private key encrypted you should run (it is recommended):
 openssl rsa -in key.pem -des3 -out passkey.pem
 ```
 
-
 ### CA Certificates
 You will also need CA certificate for DEMO and PRODUCTION environment. This certificate is needed for
 verification process.
