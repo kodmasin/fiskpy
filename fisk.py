@@ -681,10 +681,10 @@ class FiskXMLRequest(FiskXMLElement):
         
         singer - FiskXMLsec - element used to sign and verifiy messages
             if not set no message will be sign or verifiey so you will
-            get error from server
+            get error from server (EchoRequest does not require signer)
             
         SOAPclient - FiskSOAPClient - ususaly used to define client with different
-            connection attributes (defaluts are fot DEMO envirorment). If not set
+            connection attributes (defaluts are for DEMO envirorment). If not set
             default connection parrameters will be used.
         """
         cl = SOAPclient

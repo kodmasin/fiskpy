@@ -140,9 +140,24 @@ verification process.
 
 You can download this certificate https://demo-pki.fina.hr/crl/democacert.cer
 
+#### DEMO CA 2014 Certificate (2 of them)
+
+You can download this certificates http://www.fina.hr/Default.aspx?sec=1730
+
+But in time of writing this you have to include old DEMO CA certificate in list too, to work.
+
 #### PRODUCTION CA Certificate
 
 You can found it in .p12 in which you have received your private key and certificate.
+## Troubleshooting
+
+**500: Internal Server Error** - if everything else is ok server will give you this error if
+you use OIB in your requests different than in your certificate. Do not know why it is not implemented
+to send error "OIB does not match to one in certificate" but probably they have reason.
+
+**Coudl not verify xml data** - this will happen when you do not include CA Root certificates. In demo 2014 environment
+you still have to use old democacert in CA list (''FiskXMLsec'' last argument).  
+
 
 ## Changelog
 ### Version 0.6.3
