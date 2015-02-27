@@ -358,6 +358,70 @@ class XMLElement(object):
                     return False
         return True
         
+
+class FiskSOAPClientError(Exception):
+    """
+    exception used in FiskXMLsec class as indicator 
+    of some error
+    """
+    def __init__(self, message):
+        Exception.__init__(self, message)
+
+class FiskSOAPClient(object):
+    """
+    very very simple SOAP Client implementation
+    """
+    def __init__(self, host, port, url):
+        """
+        construct client with service arguments (host, port, url)
+        
+        defaults are set for DEMO envirorment
+        """
+        self.host = host
+        self.port = port
+        self.url = url
+    
+    def send(self, message, raw = False):
+        """
+        send message (as xml string) to server
+        
+        returns ElementTree object with server response message
+        
+        if raw is True then returns raw xml
+        """
+        xml = message
+        conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
+        conn.request("POST", self.url, body=xml, headers = {
+            "Host": self.host,
+            "Content-Type": "text/xml; charset=UTF-8",
+            #"Content-Length": len(xml),
+            "SOAPAction": self.url
+        })
+        rawresponse = conn.getresponse()
+        
+        if(rawresponse.status != 200):
+            conn.close()
+            raise FiskSOAPClientError(str(rawresponse.status) + ": " + rawresponse.reason)
+        response = rawresponse.read()
+        conn.close()
+        if(not raw):
+            response = fromstring(response)
+        return response
+
+class FiskSOAPClientDemo(FiskSOAPClient):
+    """
+    same class as FiskSOAPClient but with demo PU server parameters set by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest")
+  
+class FiskSOAPClientProduction(FiskSOAPClient):
+    """
+    same class as FiskSOAPClient but with procudtion PU server parameters set by default 
+    """
+    def __init__(self):
+        FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
+        
         
 class FiskXMLEleSignerError(Exception):
     """
@@ -366,14 +430,16 @@ class FiskXMLEleSignerError(Exception):
     """
     def __init__(self, message):
         Exception.__init__(self, message)
-    
 
+            
+        
 class FiskXMLsec(object):
     """
     class which implements signing and verifying of fiskal SOAP messages 
     
     it uses pyXMLsec library for that purpose
     """
+    
     def __init__(self, key, password, cert, trustcert = None):
         """
         initize pyxmlsec lib
@@ -449,7 +515,8 @@ class FiskXMLsec(object):
         xmlsec.shutdown()
         
         # Shutdown LibXML2
-        libxml2.cleanupParser()
+        if(libxml2 != None):
+            libxml2.cleanupParser()
         
     
     def signTemplate(self, fiskXMLTemplate, elementToSign):
@@ -549,7 +616,43 @@ class FiskXMLsec(object):
         doc.freeDoc()
         return rvalue
 
+class FiskInitError(Exception):
+    """
+    exception used in FiskInit class as indicator 
+    of some error
+    """
+    def __init__(self, message):
+        Exception.__init__(self, message)
 
+class FiskInit():
+    """
+    class which serves as fisk.py initalizator
+    
+    mainly it should contain all info about environment and credentials
+    """
+    key_file = None
+    password = None
+    environment = None
+    isset = False
+    signer = None
+    
+    @staticmethod
+    def init(environment, key_file, password, cert_file, trustcert_files = None):
+        FiskInit.key_file = key_file
+        FiskInit.password = password
+        if (isinstance(environment, FiskSOAPClient)):
+            FiskInit.environment = environment
+        else:
+            FiskInit.environment =  FiskSOAPClientDemo()
+        FiskInit.signer = FiskXMLsec(key_file, password, cert_file, trustcert_files)
+        FiskInit.isset = True
+    @staticmethod
+    def deinit():
+        FiskInit.key_file = None
+        FiskInit.password = None
+        FiskInit.environment = None
+        FiskInit.signer = None
+        FiskInit.isset = False
 
 class FiskSOAPMessage():
     """
@@ -580,69 +683,7 @@ class FiskSOAPMessage():
         """
         return self.message
     
-class FiskSOAPClientError(Exception):
-    """
-    exception used in FiskXMLsec class as indicator 
-    of some error
-    """
-    def __init__(self, message):
-        Exception.__init__(self, message)
 
-class FiskSOAPClient(object):
-    """
-    very very simple SOAP Client implementation
-    """
-    def __init__(self, host, port, url):
-        """
-        construct client with service arguments (host, port, url)
-        
-        defaults are set for DEMO envirorment
-        """
-        self.host = host
-        self.port = port
-        self.url = url
-    
-    def send(self, message, raw = False):
-        """
-        send message (as xml string) to server
-        
-        returns ElementTree object with server response message
-        
-        if raw is True then returns raw xml
-        """
-        xml = message
-        conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
-        conn.request("POST", self.url, body=xml, headers = {
-            "Host": self.host,
-            "Content-Type": "text/xml; charset=UTF-8",
-            #"Content-Length": len(xml),
-            "SOAPAction": self.url
-        })
-        rawresponse = conn.getresponse()
-        
-        if(rawresponse.status != 200):
-            conn.close()
-            raise FiskSOAPClientError(str(rawresponse.status) + ": " + rawresponse.reason)
-        response = rawresponse.read()
-        conn.close()
-        if(not raw):
-            response = fromstring(response)
-        return response
-
-class FiskSOAPClientDemo(FiskSOAPClient):
-    """
-    same class as FiskSOAPClient but with demo PU server parameters set by default 
-    """
-    def __init__(self):
-        FiskSOAPClient.__init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest")
-  
-class FiskSOAPClientProduction(FiskSOAPClient):
-    """
-    same class as FiskSOAPClient but with procudtion PU server parameters set by default 
-    """
-    def __init__(self):
-        FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
-        
         
 class FiskXMLElement(XMLElement):
     """
@@ -680,8 +721,9 @@ class FiskXMLRequest(FiskXMLElement):
         send SOAP request to server
         
         singer - FiskXMLsec - element used to sign and verifiy messages
-            if not set no message will be sign or verifiey so you will
-            get error from server (EchoRequest does not require signer)
+            if set to False no message will be sign or verifiey so you will
+            get error from server (EchoRequest does not require signer). If set
+            to None FiskInit.signer will be used if available (if fiskpy is initaized)
             
         SOAPclient - FiskSOAPClient - ususaly used to define client with different
             connection attributes (defaluts are for DEMO envirorment). If not set
@@ -689,7 +731,14 @@ class FiskXMLRequest(FiskXMLElement):
         """
         cl = SOAPclient
         if SOAPclient == None:
-            cl = FiskSOAPClientDemo()
+            if(FiskInit.isset):
+                cl = FiskInit.environment
+            else:
+                cl = FiskSOAPClientDemo()
+        if (signer == None):
+            if(FiskInit.isset):
+                signer = FiskInit.signer
+            
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
         self.__dict__['idPoruke'] = None
@@ -702,7 +751,7 @@ class FiskXMLRequest(FiskXMLElement):
         
         message = tostring(self.__dict__['lastRequest'])
         
-        if(signer != None and isinstance(signer, FiskXMLsec)):
+        if(signer != False and isinstance(signer, FiskXMLsec)):
             message = signer.signTemplate(self.__dict__['lastRequest'], self.getElementName())
            
         reply = cl.send(message, True)
@@ -786,7 +835,7 @@ class EchoRequest(FiskXMLRequest):
         self.__dict__['lastError'] = list()
         reply = False
         
-        self.send(None, soapclient)
+        self.send(False, soapclient)
         
         if(isinstance(self.__dict__['lastResponse'], Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "EchoResponse"):
@@ -889,7 +938,7 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         self.setAttr({"Id": "ppz"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
         
-    def execute(self, signer, SOAPclient = None):
+    def execute(self, signer = None, SOAPclient = None):
         """
         Sends PoslovniProstorZahtjev request to server and returns True if success.
         
@@ -979,13 +1028,20 @@ class Racun(FiskXMLElement):
     it is not possible to set ZastKod as this class calculate it each time
         you change one of varibales from it is calcualted
     """
-    def __init__(self, data, key_file, key_password):
+    def __init__(self, data, key_file = None, key_password = None):
         """
         data - dict - initial data
         key_file - string - ful path of filename which holds private key needed for 
             creation of ZastKod
         key_password - key password
         """
+        if (key_file == None and key_password == None):
+            if (not FiskInit.isset):
+                raise FiskInitError("Needed members not set or fiskpy was not initalized (see FiskInit)")
+            else:
+                key_file = FiskInit.key_file
+                key_password = FiskInit.password
+                
         porezListVal = XMLValidatorListType(Porez)
         iznosVal = XMLValidatorRegEx("^([+-]?)[0-9]{1,15}\.[0-9]{2}$")
         oibVal = XMLValidatorRegEx("^\d{11}$")
@@ -1055,7 +1111,7 @@ class RacunZahtjev(FiskXMLRequest):
         self.setAttr({"Id": "rac"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
         
-    def execute(self, signer, SOAPClient = None):
+    def execute(self, signer = None, SOAPClient = None):
         """
         Send RacunREquest to server. If seccessful returns JIR else False
         
@@ -1075,3 +1131,4 @@ class RacunZahtjev(FiskXMLRequest):
                     self.__dict__['lastError'].append(element.text)
                 
         return reply
+
