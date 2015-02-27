@@ -35,8 +35,8 @@ import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
-#create object needed for signing and verifing xml messages 
-signer = fisk.FiskXMLsec('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+#fiskpy initialization 
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
 #create addres
 adresa = fisk.Adresa(data = {"Ulica": "Proba", "KucniBroj": "1", "BrojPoste": "54321"})
 #create poslovni prostor      
@@ -53,7 +53,7 @@ print pp.OznPoslProstora
 #poslovni prostor request
 ppz = fisk.PoslovniProstorZahtjev(pp)
 
-ppz_reply = ppz.execute(signer)
+ppz_reply = ppz.execute()
 if(ppz_reply == True):
     print "PoslovniProstorZahtjev seccessfuly sent!"
 else:
@@ -61,6 +61,9 @@ else:
     print "PoslovniProstorZahtjev reply errors:"
     for error in errors:
         print error
+
+#fiskpy deinitialization - maybe not needed but good for correct garbage cleaning 
+fisk.FiskInit.deinit()
 ```
 
 ## Racun Request
@@ -70,8 +73,8 @@ import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
-#create object needed for signing and verifing xml messages 
-signer = fisk.FiskXMLsec('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+#fiskpy initialization 
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
 
 racun = fisk.Racun(data = {"Oib": "12345678901",
               "USustPdv": "true",
@@ -89,9 +92,7 @@ racun = fisk.Racun(data = {"Oib": "12345678901",
               "OibOper": "12345678901",
               "NakDost": "false",
               "ParagonBrRac": "123-234-12",
-              "SpecNamj": "Tekst specijalne namjne"},
-              key_file = '/path/to/your/key.pem',
-              key_password = 'kaypassword')
+              "SpecNamj": "Tekst specijalne namjne"})
 
 #IWe did not supplied required element in constructor so now we set it
 racun.OznSlijed = "P"
@@ -105,7 +106,7 @@ print "ZKI :" + racun.ZastKod
 
 #create Request and send it to server (DEMO) and print reply
 racunZahtjev = fisk.RacunZahtjev(racun)
-racun_reply = racunZahtjev.execute(signer)
+racun_reply = racunZahtjev.execute()
 if(racun_reply != False):
     print "JIR is :" + racun_reply
 else:
@@ -113,6 +114,9 @@ else:
     print "RacunZahtjev reply errors:"
     for error in errors:
         print error
+
+#fiskpy deinitialization - maybe not needed but good for correct garbage cleaning 
+fisk.FiskInit.deinit()
 ```
 
 ## KEY GENERATION
