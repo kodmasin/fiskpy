@@ -164,6 +164,9 @@ you still have to use old democacert in CA list (''FiskXMLsec'' last argument).
 
 
 ## Changelog
+### Version 0.7.0
+  * FiskInit class for easier certificates and password handling
+
 ### Version 0.6.3
   * fixed bug with encrypted keys
   * fixed small bug with text part of Element class related to unicode
