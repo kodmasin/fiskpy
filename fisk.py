@@ -17,14 +17,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.6.3
+VERSION = 0.7.1
 """
 
 from uuid import uuid4
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring,\
      fromstring
-from httplib import HTTPSConnection, HTTPException
+#from httplib import HTTPSConnection, HTTPException
+import urllib2
 import libxml2
 import xmlsec
 import re
@@ -390,20 +391,18 @@ class FiskSOAPClient(object):
         if raw is True then returns raw xml
         """
         xml = message
-        conn = HTTPSConnection(host = self.host, port = self.port, timeout = 5)
-        conn.request("POST", self.url, body=xml, headers = {
-            "Host": self.host,
-            "Content-Type": "text/xml; charset=UTF-8",
-            #"Content-Length": len(xml),
-            "SOAPAction": self.url
-        })
-        rawresponse = conn.getresponse()
         
-        if(rawresponse.status != 200):
-            conn.close()
-            raise FiskSOAPClientError(str(rawresponse.status) + ": " + rawresponse.reason)
+        request = urllib2.Request(url = r"https://" + self.host + r":" + self.port + self.url, headers = {
+                "Host": self.host,
+                "Content-Type": "text/xml; charset=UTF-8",
+                #"Content-Length": len(xml),
+                "SOAPAction": self.url
+            })
+        rawresponse = urllib2.urlopen(url = request, data = xml)
+
+        if(rawresponse.getcode() != 200):
+            raise FiskSOAPClientError(str(rawresponse.getcode()) + ": " + rawresponse.info())
         response = rawresponse.read()
-        conn.close()
         if(not raw):
             response = fromstring(response)
         return response
@@ -413,14 +412,14 @@ class FiskSOAPClientDemo(FiskSOAPClient):
     same class as FiskSOAPClient but with demo PU server parameters set by default 
     """
     def __init__(self):
-        FiskSOAPClient.__init__(self, host = "cistest.apis-it.hr", port = "8449", url = "/FiskalizacijaServiceTest")
+        FiskSOAPClient.__init__(self, host = r"cistest.apis-it.hr", port = r"8449", url = r"/FiskalizacijaServiceTest")
   
 class FiskSOAPClientProduction(FiskSOAPClient):
     """
     same class as FiskSOAPClient but with procudtion PU server parameters set by default 
     """
     def __init__(self):
-        FiskSOAPClient.__init__(self, host = "cis.porezna-uprava.hr", port = "8449", url = "/FiskalizacijaService")
+        FiskSOAPClient.__init__(self, host = r"cis.porezna-uprava.hr", port = r"8449", url = r"/FiskalizacijaService")
         
         
 class FiskXMLEleSignerError(Exception):

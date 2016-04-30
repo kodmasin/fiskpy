@@ -164,6 +164,9 @@ you still have to use old democacert in CA list (''FiskXMLsec'' last argument).
 
 
 ## Changelog
+### Version 0.7.1
+  * support for python versions 2.7.9 and above (but not 3.0.0 and above)
+
 ### Version 0.7.0
   * FiskInit class for easier certificates and password handling
 
