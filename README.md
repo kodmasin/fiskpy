@@ -131,7 +131,7 @@ openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
 Now certificate.pem holds both key and certificate. So you should manually open this file and copy each to
 separate file including BEGIN/END statements.
 
-If you want to have private key encrypted you should run (it is recommended):
+Private key should be encrypted so if it is not you should run:
 ```
 openssl rsa -in key.pem -des3 -out passkey.pem
 ```
@@ -162,10 +162,13 @@ to send error "OIB does not match to one in certificate" but probably they have 
 **Coudl not verify xml data** - this will happen when you do not include CA Root certificates. In demo 2014 environment
 you still have to use old democacert in CA list (''FiskXMLsec'' last argument).  
 
+**ValueError: RSA key format is not supported** - this error could happen if your private key is not encrypted. Please check
+if your private key is encripted. If it is not please encript it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
+
 
 ## Changelog
 ### Version 0.7.1
-  * support for python versions 2.7.9 and above (but not 3.0.0 and above)
+  * using urllib instead of httplib
 
 ### Version 0.7.0
   * FiskInit class for easier certificates and password handling
