@@ -163,7 +163,7 @@ to send error "OIB does not match to one in certificate" but probably they have 
 you still have to use old democacert in CA list (''FiskXMLsec'' last argument).  
 
 **ValueError: RSA key format is not supported** - this error could happen if your private key is not encrypted. Please check
-if your private key is encripted. If it is not please encript it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
+if your private key is encrypted. If it is not please encrypt it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
 
 
 ## Changelog
