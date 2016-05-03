@@ -24,7 +24,6 @@ from uuid import uuid4
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring,\
      fromstring
-#from httplib import HTTPSConnection, HTTPException
 import urllib2
 import libxml2
 import xmlsec
@@ -32,6 +31,8 @@ import re
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
+from ssl import SSLContext, PROTOCOL_SSLv23
+import os
 
 class XMLValidator:
     """
@@ -372,7 +373,7 @@ class FiskSOAPClient(object):
     """
     very very simple SOAP Client implementation
     """
-    def __init__(self, host, port, url):
+    def __init__(self, host, port, url, ssl_context = None):
         """
         construct client with service arguments (host, port, url)
         
@@ -381,6 +382,7 @@ class FiskSOAPClient(object):
         self.host = host
         self.port = port
         self.url = url
+        self.context = ssl_context
     
     def send(self, message, raw = False):
         """
@@ -398,7 +400,7 @@ class FiskSOAPClient(object):
                 #"Content-Length": len(xml),
                 "SOAPAction": self.url
             })
-        rawresponse = urllib2.urlopen(url = request, data = xml)
+        rawresponse = urllib2.urlopen(url = request, data = xml, context = self.context)
 
         if(rawresponse.getcode() != 200):
             raise FiskSOAPClientError(str(rawresponse.getcode()) + ": " + rawresponse.info())
@@ -412,15 +414,28 @@ class FiskSOAPClientDemo(FiskSOAPClient):
     same class as FiskSOAPClient but with demo PU server parameters set by default 
     """
     def __init__(self):
-        FiskSOAPClient.__init__(self, host = r"cistest.apis-it.hr", port = r"8449", url = r"/FiskalizacijaServiceTest")
+        demoContext = SSLContext(PROTOCOL_SSLv23)
+        mpath = os.path.dirname(__file__)
+        demoContext.load_verify_locations(capath=mpath + "/CAcerts")
+        FiskSOAPClient.__init__(self,
+                                host = r"cistest.apis-it.hr",
+                                port = r"8449",
+                                url = r"/FiskalizacijaServiceTest",
+                                ssl_context = demoContext)
   
 class FiskSOAPClientProduction(FiskSOAPClient):
     """
     same class as FiskSOAPClient but with procudtion PU server parameters set by default 
     """
     def __init__(self):
-        FiskSOAPClient.__init__(self, host = r"cis.porezna-uprava.hr", port = r"8449", url = r"/FiskalizacijaService")
-        
+        demoContext = SSLContext(PROTOCOL_SSLv23)
+        mpath = os.path.dirname(__file__)
+        demoContext.load_verify_locations(capath=mpath + "/CAcerts")
+        FiskSOAPClient.__init__(self,
+                                host = r"cis.porezna-uprava.hr",
+                                port = r"8449",
+                                url = r"/FiskalizacijaService",
+                                ssl_context = demoContext)
         
 class FiskXMLEleSignerError(Exception):
     """

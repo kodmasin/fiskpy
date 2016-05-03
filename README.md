@@ -1,7 +1,8 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
 		  (Hrvatska) 
 
-**Note:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **p2.7.9** branch.
+**Note1:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **master** branch.
+**Note2:** Code is not working with python versions >= 3.0.0
 
 ## REQUIREMENTS
 
@@ -169,8 +170,11 @@ if your private key is encrypted. If it is not please encrypt it (''openssl rsa 
 
 
 ## Changelog
+### Version 0.7.3
+  * python 2.7.9 support moved to master branch
+
 ### Version 0.7.2
-  * files reorganization to distribute CA certificates together with code - needed for python version above 2.7.7 version
+  * files reorganization to distribute CA certificates together with code - needed for python version above 2.7.8 version
 
 ### Version 0.7.1
   * using urllib instead of httplib
