@@ -21,10 +21,11 @@ limitations under the License.
 from distutils.core import setup
 
 setup(name = 'fisk',
-      version = '0.7.1',
+      version = '0.7.2',
       description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
       author = 'Boris Tomic',
       author_email = 'boris@kodmasin.net',
-      py_modules=['fisk'],
-      requires = ['pyXMLsec (>= 0.3.0)', 'pycrypto (>= 2.5)']
-      )
+      packages=['fisk'],
+      package_dir={'fisk': 'fisk'},
+      package_data={'fisk': ['CAcerts/*.pem']},
+      requires = ['pyXMLsec (>= 0.3.0)', 'pycrypto (>= 2.5)'])
