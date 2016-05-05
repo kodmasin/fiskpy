@@ -21,7 +21,7 @@ limitations under the License.
 from distutils.core import setup
 
 setup(name = 'fisk',
-      version = '0.7.2',
+      version = '0.7.4',
       description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
       author = 'Boris Tomic',
       author_email = 'boris@kodmasin.net',

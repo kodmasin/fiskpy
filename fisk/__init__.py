@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.7.2
+VERSION = 0.7.4
 """
 
 from uuid import uuid4
@@ -31,7 +31,7 @@ import re
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
-from ssl import SSLContext, PROTOCOL_SSLv23
+from ssl import SSLContext, PROTOCOL_SSLv23, create_default_context
 import os
 
 class XMLValidator:
@@ -414,9 +414,9 @@ class FiskSOAPClientDemo(FiskSOAPClient):
     same class as FiskSOAPClient but with demo PU server parameters set by default 
     """
     def __init__(self):
-        demoContext = SSLContext(PROTOCOL_SSLv23)
+        demoContext = create_default_context()
         mpath = os.path.dirname(__file__)
-        demoContext.load_verify_locations(capath=mpath + "/CAcerts")
+        demoContext.load_verify_locations(cafile=mpath + "/CAcerts/demoCAfile.pem")
         FiskSOAPClient.__init__(self,
                                 host = r"cistest.apis-it.hr",
                                 port = r"8449",
@@ -428,9 +428,9 @@ class FiskSOAPClientProduction(FiskSOAPClient):
     same class as FiskSOAPClient but with procudtion PU server parameters set by default 
     """
     def __init__(self):
-        demoContext = SSLContext(PROTOCOL_SSLv23)
+        demoContext = create_default_context()
         mpath = os.path.dirname(__file__)
-        demoContext.load_verify_locations(capath=mpath + "/CAcerts")
+        demoContext.load_verify_locations(cafile=mpath + "/CAcerts/prodCAfile.pem")
         FiskSOAPClient.__init__(self,
                                 host = r"cis.porezna-uprava.hr",
                                 port = r"8449",
@@ -507,7 +507,7 @@ class FiskXMLsec(object):
         for tcert in trustcert:
             if self.mngr.certLoad(tcert, xmlsec.KeyDataFormatPem,
                              xmlsec.KeyDataTypeTrusted) < 0:
-                self.init_error.append("Error: failed to load pem certificate from:" + tcert)
+                self.init_error.append("Could not load pem certificate from:" + tcert + ". If path is correct maybe it is already loaded.")
                 
     
     def __del__(self):
@@ -652,12 +652,36 @@ class FiskInit():
     
     @staticmethod
     def init(environment, key_file, password, cert_file, trustcert_files = None):
+        """
+        sets default fiscalization environment DEMO or PRODUCTION
+
+        environment - should be FiskSOAPClient subclass (FiskSOAPClientDemo or FiskSOAPClientProduction)
+        key_file - path to fiscalization user key file in pem format
+        password - password for key
+        cert_file - path to fiscalization user certificate in pem fromat
+        trustcert_files - list of patsh to CA certificate files used to verify fiscalization service replys.
+            Usually you can leave out this argument.
+        """
         FiskInit.key_file = key_file
         FiskInit.password = password
+        mpath = os.path.dirname(__file__) + '/CAcerts'
+        demoCAfiles = [mpath +'/demo2012_root_ca.pem',
+                       mpath +'/demo2014_root_ca.pem',
+                       mpath +'/demo2014_sub_ca.pem']
+        prodCAfiles = [mpath +'/RDCca.pem',
+                       mpath +'/FinaRootCA.pem',
+                       mpath +'/FinaRDCCA2015.pem']
+        if(trustcert_files == None):
+            trustcert_files = []
         if (isinstance(environment, FiskSOAPClient)):
             FiskInit.environment = environment
+            if(isinstance(environment, FiskSOAPClientDemo)):
+                trustcert_files = trustcert_files + demoCAfiles
+            if(isinstance(environment, FiskSOAPClientProduction)):
+                trustcert_files = trustcert_files + prodCAfiles
         else:
             FiskInit.environment =  FiskSOAPClientDemo()
+            trustcert_files = trustcert_files + demoCAfiles
         FiskInit.signer = FiskXMLsec(key_file, password, cert_file, trustcert_files)
         FiskInit.isset = True
     @staticmethod

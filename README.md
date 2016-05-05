@@ -2,6 +2,7 @@ fisk.py - simple fiscalization (Fiskalizacija) library
 		  (Hrvatska) 
 
 **Note1:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **master** branch.
+
 **Note2:** Code is not working with python versions >= 3.0.0
 
 ## REQUIREMENTS
@@ -16,6 +17,9 @@ fisk.py - simple fiscalization (Fiskalizacija) library
 ```Python
 import fisk
 import xml.etree.ElementTree as et
+
+#As we did not set environment with FiskInit default environment is DEMO. This
+#works just with EchoRequest as it does not require key (with password) and certificate.
 
 #test echo 
 echo = fisk.EchoRequest("Proba echo poruke")
@@ -38,8 +42,8 @@ import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
-#fiskpy initialization 
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+#fiskpy initialization !!! must be used for PoslovniProstorZahtjev
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 #create addres
 adresa = fisk.Adresa(data = {"Ulica": "Proba", "KucniBroj": "1", "BrojPoste": "54321"})
 #create poslovni prostor      
@@ -76,8 +80,8 @@ import fisk
 import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
-#fiskpy initialization 
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+#fiskpy initialization !!! must be used for RacunZahtjev
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 
 racun = fisk.Racun(data = {"Oib": "12345678901",
               "USustPdv": "true",
@@ -105,13 +109,13 @@ print "ZKI: " + racun.ZastKod
 
 #change one variable and check new zastitni kod
 racun.IznosUkupno = "1233.00"
-print "ZKI :" + racun.ZastKod
+print "ZKI: " + racun.ZastKod
 
 #create Request and send it to server (DEMO) and print reply
 racunZahtjev = fisk.RacunZahtjev(racun)
 racun_reply = racunZahtjev.execute()
 if(racun_reply != False):
-    print "JIR is :" + racun_reply
+    print "JIR is: " + racun_reply
 else:
     errors = racunZahtjev.get_last_error()
     print "RacunZahtjev reply errors:"
@@ -140,14 +144,20 @@ openssl rsa -in key.pem -des3 -out passkey.pem
 ```
 
 ### CA Certificates
+####Version 0.7.4
+
+CA certificate are included in release. You do should not supply them to FiskInit class.
+
+####Versions < 0.7.4
+
 You will also need CA certificate for DEMO and PRODUCTION environment. This certificate is needed for
 verification process.
 
-#### DEMO CA Certificate
+##### DEMO CA Certificate
 
 You can download this certificate https://demo-pki.fina.hr/crl/democacert.cer
 
-#### DEMO CA 2014 Certificate (2 of them)
+##### DEMO CA 2014 Certificate (2 of them)
 
 You can download this certificates http://www.fina.hr/Default.aspx?sec=1730
 
@@ -155,7 +165,7 @@ But in time of writing this you have to include old DEMO CA certificate in list 
 
 #### PRODUCTION CA Certificate
 
-You can found it in .p12 in which you have received your private key and certificate.
+You can download them from http://www.fina.hr/Default.aspx?art=10758
 ## Troubleshooting
 
 **500: Internal Server Error** - if everything else is ok server will give you this error if
@@ -165,11 +175,14 @@ to send error "OIB does not match to one in certificate" but probably they have 
 **Coudl not verify xml data** - this will happen when you do not include CA Root certificates. In demo 2014 environment
 you still have to use old democacert in CA list (''FiskXMLsec'' last argument).  
 
-**ValueError: RSA key format is not supported** - this error could happen if your private key is not encrypted. Please check
-if your private key is encrypted. If it is not please encrypt it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
+**ValueError: RSA key format is not supported** - this error could happen if your private key is not encrypted. Please check if your private key is encrypted. If it is not please encrypt it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
 
 
 ## Changelog
+### Version 0.7.4
+  * FINA CA certificates packed in release
+  * FiskInit - upgraded to use packed FINA certificates
+
 ### Version 0.7.3
   * python 2.7.9 support moved to master branch
 
