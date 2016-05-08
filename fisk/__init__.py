@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.7.2
+VERSION = 0.7.4a
 """
 
 from uuid import uuid4
@@ -637,12 +637,35 @@ class FiskInit():
     
     @staticmethod
     def init(environment, key_file, password, cert_file, trustcert_files = None):
+        """
+        sets default fiscalization environment DEMO or PRODUCTION
+        environment - should be FiskSOAPClient subclass (FiskSOAPClientDemo or FiskSOAPClientProduction)
+        key_file - path to fiscalization user key file in pem format
+        password - password for key
+        cert_file - path to fiscalization user certificate in pem fromat
+        trustcert_files - list of patsh to CA certificate files used to verify fiscalization service replys.
+            Usually you can leave out this argument.
+        """
         FiskInit.key_file = key_file
         FiskInit.password = password
+        mpath = os.path.dirname(__file__) + '/CAcerts'
+        demoCAfiles = [mpath +'/demo2012_root_ca.pem',
+                       mpath +'/demo2014_root_ca.pem',
+                       mpath +'/demo2014_sub_ca.pem']
+        prodCAfiles = [mpath +'/RDCca.pem',
+                       mpath +'/FinaRootCA.pem',
+                       mpath +'/FinaRDCCA2015.pem']
+        if(trustcert_files == None):
+            trustcert_files = []
         if (isinstance(environment, FiskSOAPClient)):
             FiskInit.environment = environment
+            if(isinstance(environment, FiskSOAPClientDemo)):
+                trustcert_files = trustcert_files + demoCAfiles
+            if(isinstance(environment, FiskSOAPClientProduction)):
+                trustcert_files = trustcert_files + prodCAfiles
         else:
             FiskInit.environment =  FiskSOAPClientDemo()
+            trustcert_files = trustcert_files + demoCAfiles
         FiskInit.signer = FiskXMLsec(key_file, password, cert_file, trustcert_files)
         FiskInit.isset = True
     @staticmethod
