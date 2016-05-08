@@ -32,6 +32,7 @@ import re
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
+import os
 
 class XMLValidator:
     """
