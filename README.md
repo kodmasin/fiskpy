@@ -1,7 +1,9 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
 		  (Hrvatska) 
 
-**Note:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **p2.7.9** branch.
+**Note:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **master** branch.
+
+**Note:** python 3.x.x is not supported jet.
 
 ## REQUIREMENTS
 
@@ -15,6 +17,9 @@ fisk.py - simple fiscalization (Fiskalizacija) library
 ```Python
 import fisk
 import xml.etree.ElementTree as et
+
+#As we did not set environment with FiskInit default environment is DEMO. This
+#works just with EchoRequest as it does not require key (with password) and certificate.
 
 #test echo 
 echo = fisk.EchoRequest("Proba echo poruke")
@@ -38,7 +43,7 @@ import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
 #fiskpy initialization 
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 #create addres
 adresa = fisk.Adresa(data = {"Ulica": "Proba", "KucniBroj": "1", "BrojPoste": "54321"})
 #create poslovni prostor      
@@ -76,7 +81,7 @@ import xml.etree.ElementTree as et
 from datetime import date, timedelta
 
 #fiskpy initialization 
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', ['/path/to/porezna/rootcert/democacert.pem'])
+fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 
 racun = fisk.Racun(data = {"Oib": "12345678901",
               "USustPdv": "true",
@@ -139,6 +144,12 @@ openssl rsa -in key.pem -des3 -out passkey.pem
 ```
 
 ### CA Certificates
+####Version 0.7.4
+
+CA certificate are included in release. You do should not supply them to FiskInit class.
+
+####Versions < 0.7.4
+
 You will also need CA certificate for DEMO and PRODUCTION environment. This certificate is needed for
 verification process.
 
@@ -169,6 +180,13 @@ if your private key is encrypted. If it is not please encrypt it (''openssl rsa 
 
 
 ## Changelog
+###Version 0.7.4
+  *FINA CA certificates packed in release
+  *FiskInit - upgraded to use packed FINA certificates
+
+###Version 0.7.3
+  *python 2.7.9 support moved to master branch
+
 ### Version 0.7.2
   * files reorganization to distribute CA certificates together with code - needed for python version above 2.7.7 version
 
