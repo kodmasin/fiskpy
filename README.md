@@ -1,9 +1,7 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
 		  (Hrvatska) 
 
-**Note1:** For python version older then 2.7.9 use **less_2.7.9** branch and for 2.7.9 and newer use **master** branch.
-
-**Note2:** Code is not working with python versions >= 3.0.0
+**Note:** Code is not working with python versions >= 3.0.0
 
 ## REQUIREMENTS
 
@@ -144,7 +142,7 @@ openssl rsa -in key.pem -des3 -out passkey.pem
 ```
 
 ### CA Certificates
-####Version 0.7.4
+####Version >= 0.7.4
 
 CA certificate are included in release. You do should not supply them to FiskInit class.
 
@@ -168,17 +166,16 @@ But in time of writing this you have to include old DEMO CA certificate in list 
 You can download them from http://www.fina.hr/Default.aspx?art=10758
 ## Troubleshooting
 
-**500: Internal Server Error** - if everything else is ok server will give you this error if
-you use OIB in your requests different than in your certificate. Do not know why it is not implemented
-to send error "OIB does not match to one in certificate" but probably they have reason.
-
-**Coudl not verify xml data** - this will happen when you do not include CA Root certificates. In demo 2014 environment
-you still have to use old democacert in CA list (''FiskXMLsec'' last argument).  
+**500: Internal Server Error** - this was bug before version 0.7.5
 
 **ValueError: RSA key format is not supported** - this error could happen if your private key is not encrypted. Please check if your private key is encrypted. If it is not please encrypt it (''openssl rsa -in key.pem -des3 -out passkey.pem'')
 
 
 ## Changelog
+### Version 0.7.5
+  * Bug - response object with errors not handeled correctly, instead only http 
+  error 500: Internal Server Error was returned - fixed using requests module
+
 ### Version 0.7.4
   * FINA CA certificates packed in release
   * FiskInit - upgraded to use packed FINA certificates

@@ -17,21 +17,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.7.4
+VERSION = 0.7.5
 """
 
 from uuid import uuid4
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring,\
      fromstring
-import urllib2
+import requests
 import libxml2
 import xmlsec
 import re
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
-from ssl import SSLContext, PROTOCOL_SSLv23, create_default_context
+#from ssl import SSLContext, PROTOCOL_SSLv23, create_default_context
 import os
 
 class XMLValidator:
@@ -373,16 +373,16 @@ class FiskSOAPClient(object):
     """
     very very simple SOAP Client implementation
     """
-    def __init__(self, host, port, url, ssl_context = None):
+    def __init__(self, host, port, url, verify = None):
         """
-        construct client with service arguments (host, port, url)
+        construct client with service arguments (host, port, url, verify)
         
-        defaults are set for DEMO envirorment
+        verifiy - path to pem file with CA certificates for response verification
         """
         self.host = host
         self.port = port
         self.url = url
-        self.context = ssl_context
+        self.verify = verify
     
     def send(self, message, raw = False):
         """
@@ -394,17 +394,22 @@ class FiskSOAPClient(object):
         """
         xml = message
         
-        request = urllib2.Request(url = r"https://" + self.host + r":" + self.port + self.url, headers = {
+        r = requests.post(r"https://" + self.host + r":" + self.port + self.url, headers = {
                 "Host": self.host,
                 "Content-Type": "text/xml; charset=UTF-8",
-                #"Content-Length": len(xml),
+               # "Content-Length": len(xml),
                 "SOAPAction": self.url
-            })
-        rawresponse = urllib2.urlopen(url = request, data = xml, context = self.context)
+            }, data = xml, verify=self.verify)
+        
+        response = None
+        if(r.status_code == requests.codes.ok):
+            response = r.text
+        else:
+            if (r.headers['Content-Type']=="text/xml"):
+                response = r.content
+            else:
+                raise FiskSOAPClientError(str(r.status_code) + ": " + r.reason)
 
-        if(rawresponse.getcode() != 200):
-            raise FiskSOAPClientError(str(rawresponse.getcode()) + ": " + rawresponse.info())
-        response = rawresponse.read()
         if(not raw):
             response = fromstring(response)
         return response
@@ -414,28 +419,26 @@ class FiskSOAPClientDemo(FiskSOAPClient):
     same class as FiskSOAPClient but with demo PU server parameters set by default 
     """
     def __init__(self):
-        demoContext = create_default_context()
         mpath = os.path.dirname(__file__)
-        demoContext.load_verify_locations(cafile=mpath + "/CAcerts/demoCAfile.pem")
+        cafile = mpath + "/CAcerts/demoCAfile.pem"
         FiskSOAPClient.__init__(self,
                                 host = r"cistest.apis-it.hr",
                                 port = r"8449",
                                 url = r"/FiskalizacijaServiceTest",
-                                ssl_context = demoContext)
+                                verify = cafile)
   
 class FiskSOAPClientProduction(FiskSOAPClient):
     """
     same class as FiskSOAPClient but with procudtion PU server parameters set by default 
     """
     def __init__(self):
-        demoContext = create_default_context()
         mpath = os.path.dirname(__file__)
-        demoContext.load_verify_locations(cafile=mpath + "/CAcerts/prodCAfile.pem")
+        cafile = mpath + "/CAcerts/prodCAfile.pem"
         FiskSOAPClient.__init__(self,
                                 host = r"cis.porezna-uprava.hr",
                                 port = r"8449",
                                 url = r"/FiskalizacijaService",
-                                ssl_context = demoContext)
+                                verify = cafile)
         
 class FiskXMLEleSignerError(Exception):
     """
@@ -608,6 +611,7 @@ class FiskXMLsec(object):
         returns True if it can verify signature of message, or 
             False if not
         """
+        xml = str(xml)
         doc = xmlsec.parseMemory(xml, len(xml), 1)
         snode = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature, xmlsec.DSigNs)
         xmlsec.addIDs(doc, doc.getRootElement(), ["Id"])
