@@ -17,21 +17,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.7.5
+VERSION = 0.8.0
 """
 
 from uuid import uuid4
 from datetime import datetime
-from xml.etree.ElementTree import Element, SubElement, tostring,\
-     fromstring
+from lxml import etree as et
 import requests
-import libxml2
-import xmlsec
+from signxml import xmldsig
+from cryptography.exceptions import InvalidSignature
+from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 import re
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA, MD5
 from Crypto.PublicKey import RSA
-#from ssl import SSLContext, PROTOCOL_SSLv23, create_default_context
 import os
 
 class XMLValidator:
@@ -208,7 +207,7 @@ class XMLElement(object):
         If not it will raise ValueError exception
         """
         #generate xml as ElementTree
-        xml = Element(self.__dict__["namespace"] + self.getName(), self.__dict__['attributes'])
+        xml = et.Element(self.__dict__["namespace"] + self.getName(), self.__dict__['attributes'])
         if self.__dict__['items']:
             for key in self.__dict__['order']:
                 #check if it is required
@@ -220,10 +219,10 @@ class XMLElement(object):
                 value = self.__dict__['items'][key] 
                 if value != None:
                     if(type(value) is str or type(value) is unicode):
-                        svar = SubElement(xml, self.__dict__["namespace"] + key)
+                        svar = et.SubElement(xml, self.__dict__["namespace"] + key)
                         svar.text = value
                     elif(type(value) is list):
-                        svar = SubElement(xml, self.__dict__["namespace"] + key)
+                        svar = et.SubElement(xml, self.__dict__["namespace"] + key)
                         for subvalue in value:
                             if(issubclass(type(subvalue), XMLElement)):
                                 svar.append(subvalue.generate())
@@ -411,7 +410,7 @@ class FiskSOAPClient(object):
                 raise FiskSOAPClientError(str(r.status_code) + ": " + r.reason)
 
         if(not raw):
-            response = fromstring(response)
+            response = et.fromstring(response)
         return response
 
 class FiskSOAPClientDemo(FiskSOAPClient):
@@ -450,93 +449,30 @@ class FiskXMLEleSignerError(Exception):
 
             
         
-class FiskXMLsec(object):
+class Signer(object):
     """
-    class which implements signing and verifying of fiskal SOAP messages 
+    class which implements signing of fiskal SOAP messages 
     
-    it uses pyXMLsec library for that purpose
+    it uses signxml library for that purpose
     """
     
-    def __init__(self, key, password, cert, trustcert = None):
+    def __init__(self, key, password, cert):
         """
         initize pyxmlsec lib
         
         key - string - key file path. this file should be in pem format
         passwrod - string - password for key file
         cert - string - certificate file. this file should be in pem format
-        trustcert - list of strings - list of pathnames vhere are trusted (root) certificates
-            for signature verification
+        trustcerts - file vhere are CA certificates in.pem format
         """
         
-        if(trustcert == None):
-            trustcert = []
         self.init_error = []
-        self.key = None
-        self.dsig_ctx = None
-        self.mngr = None
-        
-        # Init libxml library
-        libxml2.initParser()
-        libxml2.substituteEntitiesDefault(1)
-        
-        # Init xmlsec library
-        if xmlsec.init() < 0:
-            self.init_error.append("xmlsec initialization failed.")
-            
-        # Check loaded library version
-        if xmlsec.checkVersion() != 1:
-            self.init_error.append("loaded xmlsec library version is not compatible.")
-        
-        # Init crypto library
-        if xmlsec.cryptoAppInit(None) < 0:
-            self.init_error.append("crypto initialization failed.")
-        
-        # Init xmlsec-crypto library
-        if xmlsec.cryptoInit() < 0:
-            self.init_error.append("xmlsec-crypto initialization failed.")
-        #load key for signing
-        self.key = xmlsec.cryptoAppKeyLoad(key, xmlsec.KeyDataFormatPem, password, None, None)
-        if self.key == None:
-            self.init_error.append("key in file " + key + " could not be loaded.")
-        else:
-            if(xmlsec.cryptoAppKeyCertLoad(self.key, cert, xmlsec.KeyDataFormatPem) < 0):
-                self.init_error.append("Certificate in file " + cert + " could not be loaded.")
-        #create key manager for keys for verification        
-        self.mngr = xmlsec.KeysMngr()
-        if self.mngr is None:
-            self.init_error.append("Error: failed to create keys manager.")
-        if xmlsec.cryptoAppDefaultKeysMngrInit(self.mngr) < 0:
-            self.init_error.append("Error: failed to initialize keys manager.")
-        for tcert in trustcert:
-            if self.mngr.certLoad(tcert, xmlsec.KeyDataFormatPem,
-                             xmlsec.KeyDataTypeTrusted) < 0:
-                self.init_error.append("Could not load pem certificate from:" + tcert + ". If path is correct maybe it is already loaded.")
-                
-    
-    def __del__(self):
-        """
-        clean up according to pyxmlsec lib
-        """
-        #delete kay
-        if(self.key != None):
-            self.key.destroy()
-        if(self.mngr != None):
-            self.mngr.destroy()
-        # Shutdown xmlsec-crypto library
-        xmlsec.cryptoShutdown()
-        
-        # Shutdown crypto library
-        xmlsec.cryptoAppShutdown()
-        
-        # Shutdown xmlsec library
-        xmlsec.shutdown()
-        
-        # Shutdown LibXML2
-        if(libxml2 != None):
-            libxml2.cleanupParser()
+        self.key = open(key).read()
+        self.password = password
+        self.certificate = open(cert).read()
         
     
-    def signTemplate(self, fiskXMLTemplate, elementToSign):
+    def signXML(self, fiskXML, elementToSign):
         """
         signs xml template acording to XML Signature Syntax and Processing
         
@@ -549,7 +485,7 @@ class FiskXMLsec(object):
         if(self.init_error):
             raise FiskXMLEleSignerError(self.init_error)
         
-        root = fiskXMLTemplate
+        root = fiskXML
         
         RequestElement = None
         
@@ -563,47 +499,40 @@ class FiskXMLsec(object):
         
         #dodavanje Signature taga
         namespace = "{http://www.w3.org/2000/09/xmldsig#}"
-        Signature = SubElement(RequestElement, namespace + "Signature")
-        SignedInfo = SubElement(Signature, namespace + "SignedInfo")
-        SubElement(SignedInfo, namespace + "CanonicalizationMethod", {"Algorithm": "http://www.w3.org/2001/10/xml-exc-c14n#"})
-        SubElement(SignedInfo, namespace + "SignatureMethod", {"Algorithm": "http://www.w3.org/2000/09/xmldsig#rsa-sha1"})
-        Reference = SubElement(SignedInfo, namespace + "Reference", {"URI": "#" + RequestElement.get("Id")})
-        Transforms = SubElement(Reference, namespace + "Transforms")
-        SubElement(Transforms, namespace + "Transform", {"Algorithm": "http://www.w3.org/2000/09/xmldsig#enveloped-signature"})
-        SubElement(Transforms, namespace + "Transform", {"Algorithm": "http://www.w3.org/2001/10/xml-exc-c14n#"})
-        SubElement(Reference, namespace + "DigestMethod", {"Algorithm": "http://www.w3.org/2000/09/xmldsig#sha1"})
-        SubElement(Reference, namespace + "DigestValue")
-        SubElement(Signature, namespace + "SignatureValue")
-        KeyInfo = SubElement(Signature, namespace + "KeyInfo")
-        X509Data = SubElement(KeyInfo, namespace + "X509Data")
-        SubElement(X509Data, namespace + "X509Certificate")
-        SubElement(X509Data, namespace + "X509IssuerSerial")
-        #pretvaranje iz ElemenTree u string
-        myxml = tostring(root, "UTF-8")
-        #parsiranje stringa (
-        doc = xmlsec.parseMemory(myxml, len(myxml), 1)
-        #dohavanje Singature taga
-        signNode = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature, xmlsec.DSigNs)
-        #postavljenje vazeceg id atributa  
-        xmlsec.addIDs(doc, doc.getRootElement(), ["Id"])
-        
-        dsig_ctx = xmlsec.DSigCtx()
-        #we must copy key as otherwise it will be deleted on DSigCtx destroy
-        ckey = xmlsec.Key()
-        self.key.copy(ckey)
-        dsig_ctx.signKey = ckey
-        
-        if (dsig_ctx.sign(signNode) < 0):
-            raise FiskXMLEleSignerError("Coudl not sign xml data")
-        
-        if(dsig_ctx != None and isinstance(dsig_ctx, xmlsec.DSigCtx)):
-            dsig_ctx.destroy()
-        
-        signedxml = doc.serialize('UTF-8')
+        Signature = et.SubElement(RequestElement, namespace + "Signature", {'Id':'placeholder'})
 
-        doc.freeDoc()
-        return signedxml
-    
+        signer = xmldsig(root, digest_algorithm=u"sha1")
+        signed_root = signer.sign(key=self.key,
+                                  passphrase=self.password,
+                                  algorithm="rsa-sha1",
+                                  cert=self.certificate,
+                                  c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#",
+                                  reference_uri="#" + RequestElement.get("Id"))
+        
+        #signxml does not fill correctly certificate data so we need to do it manualy
+        sslcert = load_certificate(FILETYPE_PEM, self.certificate)
+        for child in signed_root.iter(namespace + "X509Data"):
+            isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
+            name = et.SubElement(isuerserial, namespace + "X509IssuerName")
+            issuer = sslcert.get_issuer()
+            name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
+            serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
+            serial.text = '{:d}'.format(sslcert.get_serial_number())
+
+        #test
+        v = Verifier()
+        print(v.verifiyXML(et.tostring(signed_root)))
+
+        return et.tostring(signed_root)
+
+class Verifier(object):
+    def __init__(self, production = False):
+        mpath = os.path.dirname(__file__) + '/CAcerts'
+        self.CAs = mpath + "/demoCAfile.pem"
+        prodCAfile = mpath + "/prodCAfile.pem"
+        if(production):
+            self.CAs = prodCAfile
+
     def verifiyXML(self, xml):
         """
         verifies xml document
@@ -611,27 +540,21 @@ class FiskXMLsec(object):
         returns True if it can verify signature of message, or 
             False if not
         """
-        xml = str(xml)
-        doc = xmlsec.parseMemory(xml, len(xml), 1)
-        snode = xmlsec.findNode(doc.getRootElement(), xmlsec.NodeSignature, xmlsec.DSigNs)
-        xmlsec.addIDs(doc, doc.getRootElement(), ["Id"])
+        """
+        verifies xml document
         
-        if snode is None:
-            return False
-        
-        dsig_ctx = xmlsec.DSigCtx(self.mngr)
-        
-        if dsig_ctx.verify(snode) < 0:
-            raise FiskXMLEleSignerError("Coudl not verify xml data")
-        
-        rvalue = False
-        if dsig_ctx.status == xmlsec.DSigStatusSucceeded:
-            rvalue = True
-        
-        if(dsig_ctx != None and isinstance(dsig_ctx, xmlsec.DSigCtx)):
-            dsig_ctx.destroy()
-            
-        doc.freeDoc()
+        returns True if it can verify signature of message, or 
+            False if not
+        """
+        root = et.fromstring(xml)
+        rvalue = None
+        signer = xmldsig(root, digest_algorithm=u"sha1")
+        try:
+            rvalue = signer.verify(ca_pem_file=self.CAs)
+        except InvalidSignature as e:
+            rvalue = None
+        if(rvalue != None):
+            rvalue = rvalue.signed_xml
         return rvalue
 
 class FiskInitError(Exception):
@@ -653,40 +576,25 @@ class FiskInit():
     environment = None
     isset = False
     signer = None
+    verifier = None
     
     @staticmethod
-    def init(environment, key_file, password, cert_file, trustcert_files = None):
+    def init(key_file, password, cert_file, production = False):
         """
         sets default fiscalization environment DEMO or PRODUCTION
 
-        environment - should be FiskSOAPClient subclass (FiskSOAPClientDemo or FiskSOAPClientProduction)
         key_file - path to fiscalization user key file in pem format
         password - password for key
         cert_file - path to fiscalization user certificate in pem fromat
-        trustcert_files - list of patsh to CA certificate files used to verify fiscalization service replys.
-            Usually you can leave out this argument.
+        production - True if you need fiscalization production env, for demo False. Default is False
         """
         FiskInit.key_file = key_file
         FiskInit.password = password
-        mpath = os.path.dirname(__file__) + '/CAcerts'
-        demoCAfiles = [mpath +'/demo2012_root_ca.pem',
-                       mpath +'/demo2014_root_ca.pem',
-                       mpath +'/demo2014_sub_ca.pem']
-        prodCAfiles = [mpath +'/RDCca.pem',
-                       mpath +'/FinaRootCA.pem',
-                       mpath +'/FinaRDCCA2015.pem']
-        if(trustcert_files == None):
-            trustcert_files = []
-        if (isinstance(environment, FiskSOAPClient)):
-            FiskInit.environment = environment
-            if(isinstance(environment, FiskSOAPClientDemo)):
-                trustcert_files = trustcert_files + demoCAfiles
-            if(isinstance(environment, FiskSOAPClientProduction)):
-                trustcert_files = trustcert_files + prodCAfiles
-        else:
-            FiskInit.environment =  FiskSOAPClientDemo()
-            trustcert_files = trustcert_files + demoCAfiles
-        FiskInit.signer = FiskXMLsec(key_file, password, cert_file, trustcert_files)
+        FiskInit.verifier = Verifier(production)
+        FiskInit.environment = FiskSOAPClientDemo()
+        if (production):
+            FiskInit.environment = FiskSOAPClientProduction()
+        FiskInit.signer = Signer(key_file, password, cert_file)
         FiskInit.isset = True
     @staticmethod
     def deinit():
@@ -694,6 +602,7 @@ class FiskInit():
         FiskInit.password = None
         FiskInit.environment = None
         FiskInit.signer = None
+        FiskInit.verifier = None
         FiskInit.isset = False
 
 class FiskSOAPMessage():
@@ -707,8 +616,8 @@ class FiskSOAPMessage():
         content - ElementTree objekt
         """
         namespace = "{http://schemas.xmlsoap.org/soap/envelope/}"
-        self.message = Element(namespace + "Envelope")
-        self.body = SubElement(self.message, namespace + "Body")
+        self.message = et.Element(namespace + "Envelope")
+        self.body = et.SubElement(self.message, namespace + "Body")
         if content != None:
             self.body.append(content.generate())
         
@@ -758,28 +667,23 @@ class FiskXMLRequest(FiskXMLElement):
         message = FiskSOAPMessage(self)
         return message.getSOAPMessage()
     
-    def send(self, signer = None, SOAPclient = None):
+    def send(self):
         """
         send SOAP request to server
         
-        singer - FiskXMLsec - element used to sign and verifiy messages
-            if set to False no message will be sign or verifiey so you will
-            get error from server (EchoRequest does not require signer). If set
-            to None FiskInit.signer will be used if available (if fiskpy is initaized)
-            
-        SOAPclient - FiskSOAPClient - ususaly used to define client with different
-            connection attributes (defaluts are for DEMO envirorment). If not set
-            default connection parrameters will be used.
+        if signer is not set FiskIni
         """
-        cl = SOAPclient
-        if SOAPclient == None:
-            if(FiskInit.isset):
-                cl = FiskInit.environment
-            else:
-                cl = FiskSOAPClientDemo()
-        if (signer == None):
-            if(FiskInit.isset):
-                signer = FiskInit.signer
+        cl = None
+        verifier = None
+        signer = None
+        
+        if(FiskInit.isset):
+            cl = FiskInit.environment
+            signer = FiskInit.signer
+            verifier = FiskInit.verifier
+        else:
+            cl = FiskSOAPClientDemo()
+            verifier = Verifier()    
             
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
@@ -791,27 +695,24 @@ class FiskXMLRequest(FiskXMLElement):
         except NameError:
             pass
         
-        message = tostring(self.__dict__['lastRequest'])
+        message = et.tostring(self.__dict__['lastRequest'])
         
-        if(signer != False and isinstance(signer, FiskXMLsec)):
-            message = signer.signTemplate(self.__dict__['lastRequest'], self.getElementName())
-           
+        if(signer != None and isinstance(signer, Signer)):
+            message = signer.signXML(self.__dict__['lastRequest'], self.getElementName())
+          
         reply = cl.send(message, True)
-        if(signer != None and isinstance(signer, FiskXMLsec)):
-            if(not signer.verifiyXML(reply)):
-                reply = None
-        if reply != None:
-            reply = fromstring(reply)
-        if(self.__dict__['idPoruke'] != None):
+        verified_reply = verifier.verifiyXML(reply)
+        
+        if(self.__dict__['idPoruke'] != None and verified_reply != None):
             retIdPoruke = None
-            for element in reply.iter():
-                if(element.tag.find("IdPoruke") != -1):
-                    retIdPoruke = element.text
+            for relement in verified_reply.iter():
+                if(relement.tag.find("IdPoruke") != -1):
+                    retIdPoruke = relement.text
                     break
             if(self.__dict__['idPoruke'] != retIdPoruke):
-                reply = None
-        self.__dict__['lastResponse'] = reply
-        return reply
+                verified_reply = None
+        self.__dict__['lastResponse'] = verified_reply
+        return verified_reply
     
     def get_last_request(self):
         """
@@ -831,7 +732,7 @@ class FiskXMLRequest(FiskXMLElement):
         """
         return self.__dict__['lastError']
     
-    def execute(self, signer = None, SOAPclient = None):
+    def execute(self):
         """
         This method returns reply from server or False
         
@@ -868,7 +769,7 @@ class EchoRequest(FiskXMLRequest):
         """
         FiskXMLRequest.__init__(self, text=text, childrenNames = ( ("text", [XMLValidatorLen(1,1000), XMLValidatorRequired()]), ) )
         
-    def execute(self, soapclient = None):
+    def execute(self):
         """
         Sends echo request to server and returns echo reply.
         
@@ -877,14 +778,13 @@ class EchoRequest(FiskXMLRequest):
         self.__dict__['lastError'] = list()
         reply = False
         
-        self.send(False, soapclient)
-        
-        if(isinstance(self.__dict__['lastResponse'], Element)):
-            for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "EchoResponse"):
-                reply = element.text
+        self.send()
+        if(isinstance(self.__dict__['lastResponse'], et._Element )):
+            for relement in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "EchoResponse"):
+                reply = relement.text
                 
             if(reply == False):
-                for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
+                for relement in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
                     self.__dict__['lastError'].append(element.text)
         
         return reply
@@ -980,7 +880,7 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         self.setAttr({"Id": "ppz"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
         
-    def execute(self, signer = None, SOAPclient = None):
+    def execute(self):
         """
         Sends PoslovniProstorZahtjev request to server and returns True if success.
         
@@ -989,9 +889,9 @@ class PoslovniProstorZahtjev(FiskXMLRequest):
         self.__dict__['lastError'] = list()
         reply = False
         
-        self.send(signer, SOAPclient)
+        self.send()
         
-        if(isinstance(self.__dict__['lastResponse'], Element)):
+        if(isinstance(self.__dict__['lastResponse'], et._Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "PorukaGreske"):
                 self.__dict__['lastError'].append(element.text)
             if(len(self.__dict__['lastError']) == 0):
@@ -1153,7 +1053,7 @@ class RacunZahtjev(FiskXMLRequest):
         self.setAttr({"Id": "rac"})
         self.addValidator("Zaglavlje", XMLValidatorRequired())
         
-    def execute(self, signer = None, SOAPClient = None):
+    def execute(self):
         """
         Send RacunREquest to server. If seccessful returns JIR else False
         
@@ -1162,9 +1062,9 @@ class RacunZahtjev(FiskXMLRequest):
         self.__dict__['lastError'] = list()
         reply = False
         
-        self.send(signer, SOAPClient)
+        self.send()
         
-        if(isinstance(self.__dict__['lastResponse'], Element)):
+        if(isinstance(self.__dict__['lastResponse'], et._Element)):
             for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "Jir"):
                 reply = element.text
             
