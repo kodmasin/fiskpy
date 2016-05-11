@@ -486,7 +486,7 @@ class Signer(object):
             raise FiskXMLEleSignerError(self.init_error)
         
         root = fiskXML
-        
+        #print(et.tostring(root))
         RequestElement = None
         
         for child in root.iter(elementToSign):
@@ -501,7 +501,7 @@ class Signer(object):
         namespace = "{http://www.w3.org/2000/09/xmldsig#}"
         Signature = et.SubElement(RequestElement, namespace + "Signature", {'Id':'placeholder'})
 
-        signer = xmldsig(root, digest_algorithm=u"sha1")
+        signer = xmldsig(RequestElement, digest_algorithm="sha1")
         signed_root = signer.sign(key=self.key,
                                   passphrase=self.password,
                                   algorithm="rsa-sha1",
@@ -510,20 +510,26 @@ class Signer(object):
                                   reference_uri="#" + RequestElement.get("Id"))
         
         #signxml does not fill correctly certificate data so we need to do it manualy
-        sslcert = load_certificate(FILETYPE_PEM, self.certificate)
-        for child in signed_root.iter(namespace + "X509Data"):
-            isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
-            name = et.SubElement(isuerserial, namespace + "X509IssuerName")
-            issuer = sslcert.get_issuer()
-            name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
-            serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
-            serial.text = '{:d}'.format(sslcert.get_serial_number())
+        #sslcert = load_certificate(FILETYPE_PEM, self.certificate)
+        #for child in signed_root.iter(namespace + "X509Data"):
+        #    isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
+        #    name = et.SubElement(isuerserial, namespace + "X509IssuerName")
+        #    issuer = sslcert.get_issuer()
+        #    name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
+        #    serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
+        #    serial.text = '{:d}'.format(sslcert.get_serial_number())
 
         #test
-        v = Verifier()
-        print(v.verifiyXML(et.tostring(signed_root)))
 
-        return et.tostring(signed_root)
+        #v = Verifier()
+        #mpath = os.path.dirname(__file__) + '/CAcerts/demoCAfile.pem'
+        #signert = xmldsig(root, digest_algorithm="sha1")
+        #print(et.tostring(signert.verify(ca_pem_file=mpath).signed_xml))
+        #print(et.tostring(root))
+        #print(v.verifiyXML(et.tostring(signed_root)))
+        #print(v.verifiyXML(et.tostring(signed_root)))
+
+        return et.tostring(root)
 
 class Verifier(object):
     def __init__(self, production = False):
@@ -546,12 +552,15 @@ class Verifier(object):
         returns True if it can verify signature of message, or 
             False if not
         """
-        root = et.fromstring(xml)
+        #print(xml)
+        root = et.fromstring(str(xml))
+        #print(root)
         rvalue = None
-        signer = xmldsig(root, digest_algorithm=u"sha1")
+        signer = xmldsig(root, digest_algorithm="sha1")
         try:
-            rvalue = signer.verify(ca_pem_file=self.CAs)
+            rvalue = signer.verify(ca_pem_file=self.CAs, validate_schema=False)
         except InvalidSignature as e:
+            print e
             rvalue = None
         if(rvalue != None):
             rvalue = rvalue.signed_xml
