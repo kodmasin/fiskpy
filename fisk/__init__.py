@@ -38,6 +38,9 @@ class XMLValidator:
     base validator class
     """
     def validate(self, value):
+        """
+
+        """
         return True
     
 class XMLValidatorLen(XMLValidator):
@@ -45,8 +48,14 @@ class XMLValidatorLen(XMLValidator):
     validator which check string lenght
     """
     def __init__(self, min_len, max_len):
+        """
+        Args:
+            min_len (int): Minimum lenght
+            max_len (int): Maximum length
+        """
         self.min = min_len
         self.max = max_len
+
     def validate(self, value):
         if(value == None):
             return True
@@ -62,7 +71,8 @@ class XMLValidatorRegEx(XMLValidator):
     """
     def __init__(self, regex):
         """
-        regex is regular expression
+        Args: 
+            regex (str): is regular expression
         """
         if(type(regex) == unicode):
             self.regex = re.compile(regex, re.UNICODE)
@@ -83,7 +93,8 @@ class XMLValidatorEnum(XMLValidator):
     """
     def __init__(self, values):
         """
-        values is list of available values
+        Args: 
+            values (list): list of possible values
         """
         self.values = values
     def validate(self, value):
@@ -100,12 +111,15 @@ class XMLValidatorType(XMLValidator):
     """
     def __init__(self, typeC):
         """
-        typeC is object of which type value should be checked.
-         Returns True if value is not set or if value is of selected
-         type otherwise returns False 
+        Args:
+            typeC: is object of which type value should be checked.
         """
         self.type = typeC
     def validate(self, value):
+        """
+        Returns: True if value is not set or if value is of selected
+            type otherwise returns False 
+        """
         if(value == None):
             return True
         if(isinstance(value, self.type)):
@@ -119,7 +133,8 @@ class XMLValidatorListType(XMLValidator):
     """
     def __init__(self, typeC):
         """
-        typeC - tpye for which list itmes will be checked
+        Args:
+            typeC: tpye for which list itmes will be checked
         """
         self.type = typeC
     def validate(self, value):
@@ -136,10 +151,13 @@ class XMLValidatorListType(XMLValidator):
     
 class XMLValidatorRequired(XMLValidator):
     """
-    cheks is value None or not. Returns True if value is not None or False
-    if value is None  
+    cheks is value None or not.
     """
     def validate(self, value):
+        """
+        Returns: True if value is not None or False
+            if value is None  
+        """
         if(value == None):
             return False
         return True
@@ -157,11 +175,11 @@ class XMLElement(object):
         """
         creates XMLElement object
         
-        childrenNames - tuple - ((name1, validators1), (name2, validators2), ...)
-        namespace - xml namespace used for this class element and its sub elements
-        text - if set and if this class does not hold any attribute that this text is text inside xml tag
-        data - dict() initial data
-        name - if for some reason you have to use diferent name for xml tag then class name
+        childrenNames (tuple): ((name1, validators1), (name2, validators2), ...)
+        namespace (str): xml namespace used for this class element and its sub elements
+        text (str): if set and if this class does not hold any attribute that this text is text inside xml tag
+        data (dict): initial data
+        name (str): if for some reason you have to use diferent name for xml tag then class name
         """
         if childrenNames == None:
             childrenNames = ()
@@ -201,10 +219,11 @@ class XMLElement(object):
         
     def generate(self):
         """
-        returns xml element (ElementTree) reprezentation of this class
+        Returns (ElementTree): xml reprezentation of this class
         
-        This method also checks are all required valuesa (attributes) set
-        If not it will raise ValueError exception
+        Raises:
+            ValueError: This method also checks are all required valuesa (attributes) set.
+                If not it will raise this exception
         """
         #generate xml as ElementTree
         xml = et.Element(self.__dict__["namespace"] + self.getName(), self.__dict__['attributes'])
@@ -362,7 +381,7 @@ class XMLElement(object):
 
 class FiskSOAPClientError(Exception):
     """
-    exception used in FiskXMLsec class as indicator 
+    exception used in FiskSOAPClient (and derived classes) class as indicator 
     of some error
     """
     def __init__(self, message):
@@ -458,12 +477,11 @@ class Signer(object):
     
     def __init__(self, key, password, cert):
         """
-        initize pyxmlsec lib
-        
-        key - string - key file path. this file should be in pem format
-        passwrod - string - password for key file
-        cert - string - certificate file. this file should be in pem format
-        trustcerts - file vhere are CA certificates in.pem format
+        Args:
+        key (str): path to file holding your key. This file should be in pem format
+        passwrod (str): password for key file
+        cert (str): path to certificate file. This file should be in pem format
+        trustcerts (str): path to file vhere are CA certificates in.pem format
         """
         
         self.init_error = []
@@ -510,21 +528,21 @@ class Signer(object):
                                   reference_uri="#" + RequestElement.get("Id"))
         
         #signxml does not fill correctly certificate data so we need to do it manualy
-        #sslcert = load_certificate(FILETYPE_PEM, self.certificate)
-        #for child in signed_root.iter(namespace + "X509Data"):
-        #    isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
-        #    name = et.SubElement(isuerserial, namespace + "X509IssuerName")
-        #    issuer = sslcert.get_issuer()
-        #    name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
-        #    serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
-        #    serial.text = '{:d}'.format(sslcert.get_serial_number())
+        sslcert = load_certificate(FILETYPE_PEM, self.certificate)
+        for child in root.iter(namespace + "X509Data"):
+            isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
+            name = et.SubElement(isuerserial, namespace + "X509IssuerName")
+            issuer = sslcert.get_issuer()
+            name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
+            serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
+            serial.text = '{:d}'.format(sslcert.get_serial_number())
 
         #test
 
         #v = Verifier()
         #mpath = os.path.dirname(__file__) + '/CAcerts/demoCAfile.pem'
         #signert = xmldsig(root, digest_algorithm="sha1")
-        #print(et.tostring(signert.verify(ca_pem_file=mpath).signed_xml))
+        #print(et.tostring(signert.verify(ca_pem_file=mpath, validate_schema=False).signed_xml))
         #print(et.tostring(root))
         #print(v.verifiyXML(et.tostring(signed_root)))
         #print(v.verifiyXML(et.tostring(signed_root)))
@@ -532,7 +550,20 @@ class Signer(object):
         return et.tostring(root)
 
 class Verifier(object):
+    """
+    class used for verification of reply messages
+
+    is uses signxml module
+    """
     def __init__(self, production = False):
+        """
+        Args:
+            production (boolean): if False demo fiscalization environment will be used (default),
+                if True production fiscalization environment will be used
+
+        The locations of files holding CA cerificates are hardcoded so if you need to add some certificate
+        please add it to those files.
+        """
         mpath = os.path.dirname(__file__) + '/CAcerts'
         self.CAs = mpath + "/demoCAfile.pem"
         prodCAfile = mpath + "/prodCAfile.pem"
@@ -543,24 +574,17 @@ class Verifier(object):
         """
         verifies xml document
         
-        returns True if it can verify signature of message, or 
-            False if not
-        """
-        """
-        verifies xml document
-        
-        returns True if it can verify signature of message, or 
-            False if not
+        Returns (ElementTree): verified xml if it can verify signature of message, or 
+            None if not
         """
         #print(xml)
-        root = et.fromstring(str(xml))
+        root = xml
         #print(root)
         rvalue = None
         signer = xmldsig(root, digest_algorithm="sha1")
         try:
             rvalue = signer.verify(ca_pem_file=self.CAs, validate_schema=False)
         except InvalidSignature as e:
-            print e
             rvalue = None
         if(rvalue != None):
             rvalue = rvalue.signed_xml
@@ -592,10 +616,12 @@ class FiskInit():
         """
         sets default fiscalization environment DEMO or PRODUCTION
 
-        key_file - path to fiscalization user key file in pem format
-        password - password for key
-        cert_file - path to fiscalization user certificate in pem fromat
-        production - True if you need fiscalization production env, for demo False. Default is False
+        Args:
+            key_file (str): path to fiscalization user key file in pem format
+            password (str): password for key
+            cert_file (str): path to fiscalization user certificate in pem fromat
+            production (boolean): True if you need fiscalization production environment, 
+                for demo False. Default is False
         """
         FiskInit.key_file = key_file
         FiskInit.password = password
@@ -622,7 +648,8 @@ class FiskSOAPMessage():
     """
     def __init__(self, content = None):
         """
-        content - ElementTree objekt
+        Args:
+            content (ElementTree): content what will be put in SOAPMessage
         """
         namespace = "{http://schemas.xmlsoap.org/soap/envelope/}"
         self.message = et.Element(namespace + "Envelope")
@@ -633,13 +660,16 @@ class FiskSOAPMessage():
     def setBodyContent(self, content):
         """
         sets new SOAP message body content
+
+        Args:
+            content (ElementTree): content what will be put in SOAPMessage
         """
         self.body.clear()
         self.body.append(content.generate())
         
     def getSOAPMessage(self):
         """
-        return ElementTree reprezentation of SOAPMEssage
+        Returns (ElementTree): reprezentation of SOAPMEssage
         """
         return self.message
     
@@ -680,7 +710,6 @@ class FiskXMLRequest(FiskXMLElement):
         """
         send SOAP request to server
         
-        if signer is not set FiskIni
         """
         cl = None
         verifier = None
@@ -692,7 +721,7 @@ class FiskXMLRequest(FiskXMLElement):
             verifier = FiskInit.verifier
         else:
             cl = FiskSOAPClientDemo()
-            verifier = Verifier()    
+            #verifier = Verifier()    
             
         self.__dict__['lastRequest'] = self.getSOAPMessage()
         #rememer generated IdPoruke nedded for return message check
@@ -709,8 +738,17 @@ class FiskXMLRequest(FiskXMLElement):
         if(signer != None and isinstance(signer, Signer)):
             message = signer.signXML(self.__dict__['lastRequest'], self.getElementName())
           
-        reply = cl.send(message, True)
-        verified_reply = verifier.verifiyXML(reply)
+        reply = et.fromstring(str(cl.send(message, True)))
+        has_signature = False
+        verified_reply = None
+        for signature in reply.findall("Signature"):
+            has_signature = True
+            break
+        if (has_signature == True):
+            if (verifier != None and isinstance(verifier, Verifier)):
+                verified_reply = verifier.verifiyXML(reply)
+        else:
+            verified_reply = reply
         
         if(self.__dict__['idPoruke'] != None and verified_reply != None):
             retIdPoruke = None

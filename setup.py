@@ -18,14 +18,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(name = 'fisk',
-      version = '0.7.5',
+      version = '0.8.0',
       description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
       author = 'Boris Tomic',
       author_email = 'boris@kodmasin.net',
-      packages=['fisk'],
-      package_dir={'fisk': 'fisk'},
+      packages=find_packages(),
       package_data={'fisk': ['CAcerts/*.pem']},
-      requires = ['pyXMLsec (>= 0.3.0)', 'pycrypto (>= 2.5)', 'requests (>2.10.0)'])
+      install_requires = ['pyOpenSSL>=0.15.1', 'pycrypto>=2.5', 'requests>=2.10.0', 'signxml>=1.0.0'])

@@ -5,7 +5,7 @@ fisk.py - simple fiscalization (Fiskalizacija) library
 
 ## REQUIREMENTS
 
-1. pyXMLsec library - http://pyxmlsec.labs.libre-entreprise.org/
+1. signxml - pip install signxml
 2. pyCrypto library - https://www.dlitz.net/software/pycrypto/
 
 ## USAGE
@@ -14,7 +14,7 @@ fisk.py - simple fiscalization (Fiskalizacija) library
 
 ```Python
 import fisk
-import xml.etree.ElementTree as et
+import lxml.etree as et
 
 #As we did not set environment with FiskInit default environment is DEMO. This
 #works just with EchoRequest as it does not require key (with password) and certificate.
@@ -37,11 +37,11 @@ else:
 
 ```Python
 import fisk
-import xml.etree.ElementTree as et
+import lxml.etree as et
 from datetime import date, timedelta
 
 #fiskpy initialization !!! must be used for PoslovniProstorZahtjev
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
+fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 #create addres
 adresa = fisk.Adresa(data = {"Ulica": "Proba", "KucniBroj": "1", "BrojPoste": "54321"})
 #create poslovni prostor      
@@ -75,11 +75,11 @@ fisk.FiskInit.deinit()
 
 ```Python
 import fisk
-import xml.etree.ElementTree as et
+import lxml.etree as et
 from datetime import date, timedelta
 
 #fiskpy initialization !!! must be used for RacunZahtjev
-fisk.FiskInit.init(fisk.FiskSOAPClientDemo(), '/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
+fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
 
 racun = fisk.Racun(data = {"Oib": "12345678901",
               "USustPdv": "true",
@@ -172,6 +172,11 @@ You can download them from http://www.fina.hr/Default.aspx?art=10758
 
 
 ## Changelog
+### Version 0.8.0
+  * switch from pyxmlsec to signxml
+  * FiksInit class changes, not back compatible
+  * small change in setup.py - now using setuputils
+  
 ### Version 0.7.5
   * Bug - response object with errors not handeled correctly, instead only http 
   error 500: Internal Server Error was returned - fixed using requests module
