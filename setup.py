@@ -21,10 +21,10 @@ limitations under the License.
 from setuptools import setup, find_packages
 
 setup(name = 'fisk',
-      version = '0.8.0',
+      version = '0.8.1',
       description = "library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
       author = 'Boris Tomic',
       author_email = 'boris@kodmasin.net',
       packages=find_packages(),
       package_data={'fisk': ['CAcerts/*.pem']},
-      install_requires = ['pyOpenSSL>=0.15.1', 'pycrypto>=2.5', 'requests>=2.10.0', 'signxml>=1.0.0'])
+      install_requires = ['pyOpenSSL>=0.15.1', 'pycrypto>=2.5', 'requests>=2.10.0', 'signxml>=2.0.0'])

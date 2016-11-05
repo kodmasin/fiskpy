@@ -17,14 +17,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.8.0
+VERSION = 0.8.1 (RC)
 """
 
 from uuid import uuid4
 from datetime import datetime
 from lxml import etree as et
 import requests
-from signxml import xmldsig
+from signxml import XMLSigner, XMLVerifier
 from cryptography.exceptions import InvalidSignature
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 import re
@@ -427,9 +427,12 @@ class FiskSOAPClient(object):
                 response = r.content
             else:
                 raise FiskSOAPClientError(str(r.status_code) + ": " + r.reason)
-
+        responseXML = et.fromstring(str(response))
+        for relement in responseXML.iter():
+                if(relement.tag.find("faultstring") != -1):
+                    raise FiskSOAPClientError(relement.text)
         if(not raw):
-            response = et.fromstring(response)
+            response = responseXML
         return response
 
 class FiskSOAPClientDemo(FiskSOAPClient):
@@ -519,17 +522,20 @@ class Signer(object):
         namespace = "{http://www.w3.org/2000/09/xmldsig#}"
         Signature = et.SubElement(RequestElement, namespace + "Signature", {'Id':'placeholder'})
 
-        signer = xmldsig(RequestElement, digest_algorithm="sha1")
-        signed_root = signer.sign(key=self.key,
-                                  passphrase=self.password,
-                                  algorithm="rsa-sha1",
-                                  cert=self.certificate,
-                                  c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#",
-                                  reference_uri="#" + RequestElement.get("Id"))
-        
+        #signer = xmldsig(RequestElement, digest_algorithm="sha1")
+        signed_root = XMLSigner(signature_algorithm="rsa-sha1",
+                                digest_algorithm="sha1",
+                                c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#").sign(root,
+                                    key=self.key,
+                                    passphrase=self.password,
+                                    cert=self.certificate,
+                                    reference_uri="#" + RequestElement.get("Id"))
+
         #signxml does not fill correctly certificate data so we need to do it manualy
         sslcert = load_certificate(FILETYPE_PEM, self.certificate)
-        for child in root.iter(namespace + "X509Data"):
+        
+        child = signed_root.find(".//" + namespace + "X509Data")
+        if(child != None):
             isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
             name = et.SubElement(isuerserial, namespace + "X509IssuerName")
             issuer = sslcert.get_issuer()
@@ -537,17 +543,7 @@ class Signer(object):
             serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
             serial.text = '{:d}'.format(sslcert.get_serial_number())
 
-        #test
-
-        #v = Verifier()
-        #mpath = os.path.dirname(__file__) + '/CAcerts/demoCAfile.pem'
-        #signert = xmldsig(root, digest_algorithm="sha1")
-        #print(et.tostring(signert.verify(ca_pem_file=mpath, validate_schema=False).signed_xml))
-        #print(et.tostring(root))
-        #print(v.verifiyXML(et.tostring(signed_root)))
-        #print(v.verifiyXML(et.tostring(signed_root)))
-
-        return et.tostring(root)
+        return et.tostring(signed_root)
 
 class Verifier(object):
     """
@@ -577,17 +573,14 @@ class Verifier(object):
         Returns (ElementTree): verified xml if it can verify signature of message, or 
             None if not
         """
-        #print(xml)
         root = xml
-        #print(root)
         rvalue = None
-        signer = xmldsig(root, digest_algorithm="sha1")
-        try:
-            rvalue = signer.verify(ca_pem_file=self.CAs, validate_schema=False)
-        except InvalidSignature as e:
-            rvalue = None
-        if(rvalue != None):
+
+        rvalue = XMLVerifier().verify(root, ca_pem_file=self.CAs, validate_schema=False)
+        if(rvalue.signed_xml != None):
             rvalue = rvalue.signed_xml
+        else:
+            rvalue = None
         return rvalue
 
 class FiskInitError(Exception):
@@ -714,7 +707,9 @@ class FiskXMLRequest(FiskXMLElement):
         cl = None
         verifier = None
         signer = None
-        
+        signxmlNS = "{http://www.w3.org/2000/09/xmldsig#}"
+        apisNS = "{http://www.apis-it.hr/fin/2012/types/f73}"
+
         if(FiskInit.isset):
             cl = FiskInit.environment
             signer = FiskInit.signer
@@ -738,12 +733,11 @@ class FiskXMLRequest(FiskXMLElement):
         if(signer != None and isinstance(signer, Signer)):
             message = signer.signXML(self.__dict__['lastRequest'], self.getElementName())
           
-        reply = et.fromstring(str(cl.send(message, True)))
+        reply = cl.send(message)
         has_signature = False
         verified_reply = None
-        for signature in reply.findall("Signature"):
+        if(reply.find(".//" + signxmlNS + "Signature") != None):
             has_signature = True
-            break
         if (has_signature == True):
             if (verifier != None and isinstance(verifier, Verifier)):
                 verified_reply = verifier.verifiyXML(reply)
@@ -752,10 +746,9 @@ class FiskXMLRequest(FiskXMLElement):
         
         if(self.__dict__['idPoruke'] != None and verified_reply != None):
             retIdPoruke = None
-            for relement in verified_reply.iter():
-                if(relement.tag.find("IdPoruke") != -1):
-                    retIdPoruke = relement.text
-                    break
+            idPorukeE = verified_reply.find(".//" + apisNS + "IdPoruke")
+            if(idPorukeE != None):
+                retIdPoruke = idPorukeE.text
             if(self.__dict__['idPoruke'] != retIdPoruke):
                 verified_reply = None
         self.__dict__['lastResponse'] = verified_reply

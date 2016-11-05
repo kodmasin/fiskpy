@@ -1,11 +1,14 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
-		  (Hrvatska) 
+		  (Hrvatska)  
 
-**Note:** Code is not working with python versions >= 3.0.0
+** !!! This is release candidate !!! **
+
+**Note1:** Code is not working with python versions >= 3.0.0
+**Note2:** Support for WSDL <= 1.2
 
 ## REQUIREMENTS
 
-1. signxml - pip install signxml
+1. signxml - pip install signxml (version 2 supported from fiskpy v0.8.1)
 2. pyCrypto library - https://www.dlitz.net/software/pycrypto/
 
 ## USAGE
@@ -42,6 +45,8 @@ from datetime import date, timedelta
 
 #fiskpy initialization !!! must be used for PoslovniProstorZahtjev
 fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
+#For production environment
+#fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', Ture)
 #create addres
 adresa = fisk.Adresa(data = {"Ulica": "Proba", "KucniBroj": "1", "BrojPoste": "54321"})
 #create poslovni prostor      
@@ -80,6 +85,8 @@ from datetime import date, timedelta
 
 #fiskpy initialization !!! must be used for RacunZahtjev
 fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
+#For production environment
+#fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem', Ture)
 
 racun = fisk.Racun(data = {"Oib": "12345678901",
               "USustPdv": "true",
@@ -172,6 +179,11 @@ You can download them from http://www.fina.hr/Default.aspx?art=10758
 
 
 ## Changelog
+### Version 0.8.1 RC
+  * signxml 2 support
+  * better handeling of SOAP errors
+  * nicer and probably faster lxml usage
+
 ### Version 0.8.0
   * switch from pyxmlsec to signxml
   * FiksInit class changes, not back compatible
