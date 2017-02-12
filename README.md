@@ -229,6 +229,7 @@ You can download them from http://www.fina.hr/Default.aspx?art=10758
 ### Version 0.8.1
   * WSDL 1.3 support added (ProvjeraRacuna - just for test environment)
   * removed manually added certificate data in signXML
+  
 ### Version 0.8.1 RC
   * signxml 2 support
   * better handeling of SOAP errors
