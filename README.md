@@ -1,10 +1,7 @@
 fisk.py - simple fiscalization (Fiskalizacija) library 
 		  (Hrvatska)  
 
-** !!! This is release candidate !!! **
-
 **Note1:** Code is not working with python versions >= 3.0.0
-**Note2:** Support for WSDL <= 1.2
 
 ## REQUIREMENTS
 
@@ -130,6 +127,56 @@ else:
 #fiskpy deinitialization - maybe not needed but good for correct garbage cleaning 
 fisk.FiskInit.deinit()
 ```
+## Provjera Request
+
+```
+import fisk
+from lxml import etree as et
+from datetime import date, timedelta
+
+#fiskpy initialization 
+fisk.FiskInit.init('/path/to/your/key.pem', "kaypassword", '/path/to/your/cert.pem')
+
+racun = fisk.Racun(data = {"Oib": "12345678901",
+            "USustPdv": "true",
+            "DatVrijeme": "26.10.2013T23:50:00",
+            "BrRac": fisk.BrRac({"BrOznRac": "2", "OznPosPr":"POS2", "OznNapUr":"1"}),
+            "Pdv": [fisk.Porez({"Stopa":"25.00", "Osnovica":"100.00", "Iznos":"25.00"}), fisk.Porez({"Stopa":"10.00", "Osnovica":"100.00", "Iznos":"10.00"})],
+            "Pnp": [fisk.Porez({"Stopa":"25.00", "Osnovica":"100.00", "Iznos":"25.00"}), fisk.Porez({"Stopa":"10.00", "Osnovica":"100.00", "Iznos":"10.00"})],
+            "OstaliPor": [fisk.OstPorez({"Naziv": "Neki porez",  "Stopa":"3.00", "Osnovica":"100.00", "Iznos":"3.00"})],
+            "IznosOslobPdv": "100.00",
+            "IznosMarza": "100.00",
+            "IznosNePodlOpor": "50.00",
+            "Naknade": [fisk.Naknada({"NazivN" : "test", "IznosN": "10.00"})],
+            "IznosUkupno": "500.00",
+            "NacinPlac": "G",
+            "OibOper": "12345678901",
+            "NakDost": "false",
+            "ParagonBrRac": "123-234-12",
+            "SpecNamj": "Tekst specijalne namjne"})
+
+#We did not supplied required element in constructor so now we set it
+racun.OznSlijed = "P"
+
+#Zastitni kod is calculated so print it
+print "ZKI: " + racun.ZastKod
+
+#change one variable and check new zastitni kod
+racun.IznosUkupno = "1233.00"
+print "ZKI :" + racun.ZastKod
+
+#create Request and send it to server (DEMO) and print reply
+provjeraZahtjev = fisk.ProvjeraZahtjev(racun)
+provjera_reply = provjeraZahtjev.execute()
+
+if(provjera_reply == False):
+  print "Request and response data is not the same"
+elif(isinstance(provjera_reply, et._Element)):
+  for greska in provjera_reply:
+    print u"Code: {} -> Message: {}".format(greska[0].text, greska[1].text)
+else:
+  print("Unhandled error")
+```
 
 ## KEY GENERATION
 
@@ -179,6 +226,9 @@ You can download them from http://www.fina.hr/Default.aspx?art=10758
 
 
 ## Changelog
+### Version 0.8.1
+  * WSDL 1.3 support added (ProvjeraRacuna - just for test environment)
+  * removed manually added certificate data in signXML
 ### Version 0.8.1 RC
   * signxml 2 support
   * better handeling of SOAP errors

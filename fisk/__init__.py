@@ -17,7 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-VERSION = 0.8.1 (RC)
+VERSION = 0.8.1
 """
 
 from uuid import uuid4
@@ -530,18 +530,6 @@ class Signer(object):
                                     passphrase=self.password,
                                     cert=self.certificate,
                                     reference_uri="#" + RequestElement.get("Id"))
-
-        #signxml does not fill correctly certificate data so we need to do it manualy
-        sslcert = load_certificate(FILETYPE_PEM, self.certificate)
-        
-        child = signed_root.find(".//" + namespace + "X509Data")
-        if(child != None):
-            isuerserial = et.SubElement(child, namespace + "X509IssuerSerial")
-            name = et.SubElement(isuerserial, namespace + "X509IssuerName")
-            issuer = sslcert.get_issuer()
-            name.text = "CN=" + issuer.CN +",O=" + issuer.O + ",C=" +issuer.C
-            serial = et.SubElement(isuerserial, namespace + "X509SerialNumber")
-            serial.text = '{:d}'.format(sslcert.get_serial_number())
 
         return et.tostring(signed_root)
 
@@ -1114,3 +1102,38 @@ class RacunZahtjev(FiskXMLRequest):
                 
         return reply
 
+class ProvjeraZahtjev(FiskXMLRequest):
+    """
+    ProvjeraZahtjev element - vorking 
+    """
+    def __init__(self, racun):
+        FiskXMLRequest.__init__(self, childrenNames = ( ("Zaglavlje", [XMLValidatorType(Zaglavlje)]),
+                                              ("Racun", [XMLValidatorType(Racun), XMLValidatorRequired()])
+                                              ),
+                                data = {"Racun": racun})
+        self.Zaglavlje = Zaglavlje()
+        self.setAttr({"Id": "rac"})
+        self.addValidator("Zaglavlje", XMLValidatorRequired())
+
+    def execute(self):
+        """
+        Send ProvjeraZahtjec request to server.
+        
+        If returns False if request Racun data is not same as response Racun data, otherwise it returns
+        Greske element from respnse so you can check them if they exists
+        """
+        self.__dict__['lastError'] = list()
+        reply = False
+        
+        self.send()
+        
+        if(isinstance(self.__dict__['lastResponse'], et._Element)):
+            for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "Racun"):
+                if(et.tostring(element) == et.tostring(self.Racun.generate())):
+                    reply = True
+            
+            if(reply == False):
+                for element in self.__dict__['lastResponse'].iter(self.__dict__['namespace'] + "Greske"):
+                    reply = element
+                
+        return reply
