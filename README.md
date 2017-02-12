@@ -227,9 +227,9 @@ You can download them from http://www.fina.hr/Default.aspx?art=10758
 
 ## Changelog
 ### Version 0.8.1
-  * WSDL 1.3 support added (ProvjeraRacuna - just for test environment)
+  * WSDL 1.3 support added (ProvjeraRacuna - can be used just in test environment - cistest.apis-it.hr)
   * removed manually added certificate data in signXML
-  
+
 ### Version 0.8.1 RC
   * signxml 2 support
   * better handeling of SOAP errors
