@@ -34,5 +34,6 @@ setup(
         'pycrypto>=2.5',
         'requests>=2.10.0',
         'signxml>=2.0.0',
+        'pyasn1>=0.2.2',
     ]
 )
