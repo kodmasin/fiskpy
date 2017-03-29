@@ -18,12 +18,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+# Always prefer setuptools over distutils
 from setuptools import find_packages, setup
+# To use a consistent encoding
+from codecs import open
+from os import path
+
+here = path.abspath(path.dirname(__file__))
+
+# Get the long description from the README file
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='fisk',
     version='0.8.2',
     description="library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
+    long_description=long_description,
     url='https://github.com/kodmasin/fiskpy',
     author='Boris Tomic',
     author_email='boris@kodmasin.net',
