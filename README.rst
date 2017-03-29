@@ -7,6 +7,15 @@ HR: *Biblioteka za fiskalizaciju računa Poreznoj upravi Republike Hrvatske.*
 
 **Note1:** This library is not Python 3 compatible.
 
+INSTALLATION
+------------
+
+To install this package from PyPI, use the following command:
+
+.. code:: bash
+
+    $ pip install fisk
+
 REQUIREMENTS
 ------------
 
