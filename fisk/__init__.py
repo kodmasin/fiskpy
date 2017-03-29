@@ -1,4 +1,3 @@
-# coding=UTF-8
 """
 fisk.py - simple library for Croatian (Hrvatska) 
           fiscalization 
@@ -19,6 +18,7 @@ limitations under the License.
 
 VERSION = 0.8.1
 """
+# -*- coding: utf-8 -*-
 
 from uuid import uuid4
 from datetime import datetime
