@@ -22,7 +22,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='fisk',
-    version='0.8.1',
+    version='0.8.2',
     description="library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
     url='https://github.com/kodmasin/fiskpy',
     author='Boris Tomic',
