@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from hashlib import md5
 from uuid import uuid4
 from datetime import datetime
@@ -398,7 +396,7 @@ class FiskSOAPClient(object):
             response = r.text
         else:
             if (r.headers['Content-Type']=="text/xml"):
-                response = r.content
+                response = r.text
             else:
                 raise FiskSOAPClientError(str(r.status_code) + ": " + r.reason)
         print(response, type(response))
@@ -495,7 +493,7 @@ class Signer(object):
 
         #dodavanje Signature taga
         namespace = "{http://www.w3.org/2000/09/xmldsig#}"
-        Signature = et.SubElement(RequestElement, namespace + "Signature", {'Id':'placeholder'})
+        et.SubElement(RequestElement, namespace + "Signature", {'Id':'placeholder'})
 
         #signer = xmldsig(RequestElement, digest_algorithm="sha1")
         signed_root = XMLSigner(signature_algorithm="rsa-sha1",
