@@ -30,10 +30,10 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
     package_data={'fisk': ['CAcerts/*.pem']},
     install_requires=[
-        'pyOpenSSL>=22.0.0'
-        'pycrypto>=2.6.1'
-        'requests>=2.28.0'
-        'signxml>=2.9.0'
+        'pyOpenSSL>=22.0.0',
+        'pycrypto>=2.6.1',
+        'requests>=2.28.0',
+        'signxml>=2.9.0',
         'pyasn1>=0.4.8'
     ],
     classifiers=[
