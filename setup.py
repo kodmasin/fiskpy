@@ -19,7 +19,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='fisk',
-    version='0.8.2',
+    version='0.8.3',
     description="library for fiscalization (Hrvatska) as defined in wsdl-1.1.2 and wsdl-1.2",
     long_description=long_description,
     url='https://github.com/kodmasin/fiskpy',
@@ -30,11 +30,11 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
     package_data={'fisk': ['CAcerts/*.pem']},
     install_requires=[
-        'pyOpenSSL>=0.15.1',
-        'pycrypto>=2.5',
-        'requests>=2.10.0',
-        'signxml>=2.0.0',
-        'pyasn1>=0.2.2',
+        'pyOpenSSL>=22.0.0'
+        'pycrypto>=2.6.1'
+        'requests>=2.28.0'
+        'signxml>=2.9.0'
+        'pyasn1>=0.4.8'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
